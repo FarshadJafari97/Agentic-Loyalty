@@ -1,45 +1,13 @@
 # store/models.py
 from __future__ import annotations
-from enum import StrEnum
-from pydantic import BaseModel, Field
+from enum import Enum
+from pydantic import BaseModel
 
 
-class Brand(BaseModel):
-    canonical_id: str
-    display_name: str
-
-
-class Product(BaseModel):
-    product_id: str
-    brand_id: str
-    base_price: float
-    current_price: float
-    quality: float
-    attributes: dict[str, float] = Field(default_factory=dict)
-    stock: int
-
-
-class UserRequest(BaseModel):
-    need: str
-    budget: float
-    attribute_weights: dict[str, float] = Field(default_factory=dict)
-    brand_preference: str | None = None
-    states_no_preference: bool = False
-
-
-class Outcome(StrEnum):
-    SATISFIED = "satisfied"
-    NEUTRAL = "neutral"
-    FAILED = "failed"
-
-
-class Event(StrEnum):
+class Event(str, Enum):
     ROUND_STARTED = "round_started"
+    ROUND_CLOSED = "round_closed"
     PURCHASE = "purchase"
-    ABSTAIN = "abstain"
-    OUTCOME = "outcome"
-    PRICE_SHOCK = "price_shock"
-    STOCK_SHOCK = "stock_shock"
 
 
 class LogEntry(BaseModel):
@@ -49,13 +17,51 @@ class LogEntry(BaseModel):
     payload: dict
 
 
+class ProductSpec(BaseModel):
+    """Fixed product specification — defined by us."""
+    product_id: str
+    name: str
+    category: str
+    brand: str
+    quality: float = 0.0
+    attributes: dict[str, float] = {}
+
+
+class ProductView(BaseModel):
+    """What is shown to the Agent."""
+    product_id: str
+    name: str
+    category: str
+    brand: str
+    price: float
+    quality: float
+    attributes: dict[str, float]
+
+
+class ListingEntry(BaseModel):
+    """Product availability in a round + its price for that round."""
+    available: int          # 0 or 1
+    price: float
+
+
 class PurchaseRecord(BaseModel):
     round: int
     product_id: str
-    brand_id: str
+    product_name: str
+    category: str
+    brand: str
     price_paid: float
     budget: float
-    alternatives: list[str]
+    reason: str
+
+
+class HistoryEntry(BaseModel):
+    """Purchase summary provided to the Agent."""
+    round: int
+    category: str
+    brand: str
+    product: str
+    reason: str
 
 
 class ValidationResult(BaseModel):
