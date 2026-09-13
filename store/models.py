@@ -18,7 +18,7 @@ class LogEntry(BaseModel):
 
 
 class ProductSpec(BaseModel):
-    """Fixed product specification — defined by us."""
+    """Static product definition, fixed by us (the experimenters)."""
     product_id: str
     name: str
     category: str
@@ -28,7 +28,7 @@ class ProductSpec(BaseModel):
 
 
 class ProductView(BaseModel):
-    """What is shown to the Agent."""
+    """What the agent sees for a product in a given round."""
     product_id: str
     name: str
     category: str
@@ -39,12 +39,19 @@ class ProductView(BaseModel):
 
 
 class ListingEntry(BaseModel):
-    """Product availability in a round + its price for that round."""
+    """Per-round presence and price for one product."""
     available: int          # 0 or 1
     price: float
 
 
+class RoundSpec(BaseModel):
+    """Full definition of a single round, defined by us."""
+    budget: float
+    listings: dict[str, ListingEntry]
+
+
 class PurchaseRecord(BaseModel):
+    """Full record of a committed purchase."""
     round: int
     product_id: str
     product_name: str
@@ -56,7 +63,7 @@ class PurchaseRecord(BaseModel):
 
 
 class HistoryEntry(BaseModel):
-    """Purchase summary provided to the Agent."""
+    """Compact purchase history entry shown to the agent."""
     round: int
     category: str
     brand: str

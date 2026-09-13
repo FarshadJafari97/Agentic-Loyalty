@@ -1,41 +1,51 @@
 # store/engine.py
 from __future__ import annotations
-from pydantic import BaseModel
 
 from .models import (
-    CommitResult, Event, HistoryEntry, ListingEntry, LogEntry,
-    ProductSpec, ProductView, PurchaseRecord, ValidationResult,
+    CommitResult,
+    Event,
+    HistoryEntry,
+    LogEntry,
+    ProductSpec,
+    ProductView,
+    PurchaseRecord,
+    RoundSpec,
+    ValidationResult,
 )
 
 
 class StoreEnv:
-    """Store environment for a single experiment run.
+    """Store environment for a single experimental run.
 
     Responsibilities:
-    - Fixed product catalog (defined by us)
-    - Round schedule: which products are available in each round, and at what price
-    - Responding to Agent tools: get_products / commit_purchase
-    - Recording purchase history
+    - Hold the static product catalog (defined by us).
+    - Hold the round-by-round schedule (budget + listings, defined by us).
+    - Serve agent tools: get_products / commit_purchase.
+    - Keep the purchase history.
 
-    No randomness, no outcomes, no utility.
+    Design notes:
+    - No randomness, no seed.
+    - No outcome simulation, no utility function.
+    - Budget is a per-round ceiling; it is NOT consumed by purchases.
+    - Shocks are not applicable here; the whole schedule is precomputed.
     """
 
     def __init__(
         self,
         catalog: list[ProductSpec],
-        schedule: list[dict[str, ListingEntry]],
+        schedule: list[RoundSpec],
     ) -> None:
         self._catalog: dict[str, ProductSpec] = {p.product_id: p for p in catalog}
-        self._schedule = schedule
+        self._schedule: list[RoundSpec] = schedule
         self._max_rounds = len(schedule)
 
-        # Validate the schedule
-        for r, round_map in enumerate(schedule, start=1):
-            for pid in round_map:
+        # Validate the schedule against the catalog.
+        for r, spec in enumerate(schedule, start=1):
+            if spec.budget < 0:
+                raise ValueError(f"round {r}: negative budget")
+            for pid in spec.listings:
                 if pid not in self._catalog:
-                    raise ValueError(
-                        f"schedule round {r} references unknown product {pid}"
-                    )
+                    raise ValueError(f"round {r}: unknown product {pid}")
 
         self._round = 1
         self._round_open = False
@@ -44,7 +54,12 @@ class StoreEnv:
         self._log: list[LogEntry] = []
         self._seq = 0
 
-    # ── State ──────────────────────────────────────────────
+    # ── Round bookkeeping ──────────────────────────────────
+    @property
+    def _current_spec(self) -> RoundSpec:
+        """RoundSpec for the round currently in progress (or about to begin)."""
+        return self._schedule[self._round - 1]
+
     @property
     def round(self) -> int:
         return self._round
@@ -67,7 +82,7 @@ class StoreEnv:
 
     @property
     def history(self) -> list[HistoryEntry]:
-        """History summary to provide to the Agent."""
+        """Compact history of all purchases so far, for the agent."""
         return [
             HistoryEntry(
                 round=p.round,
@@ -86,18 +101,18 @@ class StoreEnv:
         )
 
     # ── Round lifecycle (called by the orchestrator) ───────
-    def begin_round(self, budget: float) -> None:
+    def begin_round(self) -> None:
+        """Open the current round. Budget is read from the schedule."""
         if self._round_open:
             raise RuntimeError("round already open; call close_round() first")
         if self.finished:
             raise RuntimeError("episode finished")
-        if budget < 0:
-            raise ValueError("budget must be >= 0")
-        self._budget = budget
+        self._budget = self._current_spec.budget
         self._round_open = True
-        self._append(Event.ROUND_STARTED, {"budget": budget})
+        self._append(Event.ROUND_STARTED, {"budget": self._budget})
 
     def close_round(self) -> None:
+        """Close the current round and advance to the next one."""
         if not self._round_open:
             raise RuntimeError("round not open")
         self._round_open = False
@@ -106,12 +121,12 @@ class StoreEnv:
 
     # ── Agent tools ────────────────────────────────────────
     def get_products(self, category: str) -> list[ProductView]:
-        """Products in this category for the current round, with that round's price."""
+        """Return products in the given category available in the current round."""
         if not self._round_open:
             raise RuntimeError("round not open")
-        round_map = self._schedule[self._round - 1]
+        listings = self._current_spec.listings
         out: list[ProductView] = []
-        for pid, entry in round_map.items():
+        for pid, entry in listings.items():
             if not entry.available:
                 continue
             spec = self._catalog[pid]
@@ -131,12 +146,13 @@ class StoreEnv:
         return out
 
     def validate_purchase(self, product_id: str) -> ValidationResult:
+        """Check whether the given product can be purchased this round."""
         if not self._round_open:
             return ValidationResult(ok=False, reason="round_not_open")
         spec = self._catalog.get(product_id)
         if spec is None:
             return ValidationResult(ok=False, reason="unknown_product")
-        entry = self._schedule[self._round - 1].get(product_id)
+        entry = self._current_spec.listings.get(product_id)
         if entry is None or not entry.available:
             return ValidationResult(ok=False, reason="not_available_this_round")
         if entry.price > self._budget:
@@ -144,7 +160,7 @@ class StoreEnv:
         return ValidationResult(ok=True)
 
     def commit_purchase(self, product_id: str, reason: str) -> CommitResult:
-        """Record a purchase in the current round. Returns ok=False on error so the Agent can correct itself."""
+        """Commit a purchase. Returns ok=False on failure so the agent can retry."""
         check = self.validate_purchase(product_id)
         if not check.ok:
             self._append(
@@ -154,7 +170,7 @@ class StoreEnv:
             return CommitResult(ok=False, reason=check.reason)
 
         spec = self._catalog[product_id]
-        entry = self._schedule[self._round - 1][product_id]
+        entry = self._current_spec.listings[product_id]
         record = PurchaseRecord(
             round=self._round,
             product_id=product_id,
@@ -169,6 +185,7 @@ class StoreEnv:
         self._append(Event.PURCHASE, record.model_dump())
         return CommitResult(ok=True, record=record)
 
-    # ── Prompt helpers ─────────────────────────────────────
+    # ── Helpers for prompt construction ────────────────────
     def history_for_prompt(self) -> list[dict]:
+        """History as plain dicts, ready to embed in the agent prompt."""
         return [h.model_dump() for h in self.history]
