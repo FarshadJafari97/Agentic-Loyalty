@@ -8,6 +8,7 @@ class Event(str, Enum):
     ROUND_STARTED = "round_started"
     ROUND_CLOSED = "round_closed"
     PURCHASE = "purchase"
+    ROUND_FAILED = "round_failed"
 
 
 class LogEntry(BaseModel):
@@ -62,13 +63,21 @@ class PurchaseRecord(BaseModel):
     reason: str
 
 
-class HistoryEntry(BaseModel):
-    """Compact purchase history entry shown to the agent."""
+class FailedRound(BaseModel):
+    """A round in which no purchase was committed (agent exhausted retries)."""
     round: int
-    category: str
-    brand: str
-    product: str
+    budget: float
     reason: str
+
+
+class HistoryEntry(BaseModel):
+    """Unified history entry: either a committed purchase or a failed round."""
+    round: int
+    status: str                          # "committed" | "failed"
+    category: str | None = None
+    brand: str | None = None
+    product: str | None = None
+    reason: str | None = None
 
 
 class ValidationResult(BaseModel):

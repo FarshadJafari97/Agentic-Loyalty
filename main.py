@@ -8,10 +8,6 @@ env = StoreEnv(catalog=catalog, schedule=SCHEDULE)
 
 while not env.finished:
     env.begin_round()
-
-    round_ = env._round
-
-    print(round_)
     # ساخت prompt با products + history
     # اجرای گراف LangGraph
     env.close_round()
