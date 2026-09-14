@@ -50,7 +50,7 @@ USER_REQUESTS = [
 
 def main():
     llm = ChatOpenAI(
-        model = "gemini-3.5-flash-lite",
+        model = "gemini-3.6-flash",
         base_url= "http://127.0.0.1:31415/v1" ,
         api_key= "freellmapi-704878672ffd732da01727053c869683948f26decc0f8713"
     )
