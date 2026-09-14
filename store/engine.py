@@ -2,15 +2,8 @@
 from __future__ import annotations
 
 from .models import (
-    CommitResult,
-    Event,
-    HistoryEntry,
-    LogEntry,
-    ProductSpec,
-    ProductView,
-    PurchaseRecord,
-    RoundSpec,
-    ValidationResult,
+    CommitResult, Event, FailedRound, HistoryEntry, LogEntry,
+    ProductSpec, ProductView, PurchaseRecord, RoundSpec, ValidationResult,
 )
 
 
@@ -53,6 +46,7 @@ class StoreEnv:
         self._purchases: list[PurchaseRecord] = []
         self._log: list[LogEntry] = []
         self._seq = 0
+        self._failed_rounds: list[FailedRound] = []
 
     # ── Round bookkeeping ──────────────────────────────────
     @property
@@ -81,18 +75,40 @@ class StoreEnv:
         return list(self._log)
 
     @property
+    def failed_rounds(self) -> list[FailedRound]:
+        return list(self._failed_rounds)
+
+    @property
     def history(self) -> list[HistoryEntry]:
-        """Compact history of all purchases so far, for the agent."""
-        return [
-            HistoryEntry(
-                round=p.round,
-                category=p.category,
-                brand=p.brand,
-                product=p.product_name,
-                reason=p.reason,
-            )
-            for p in self._purchases
-        ]
+        """All rounds so far, sorted by round: committed purchases and failed rounds."""
+        entries: list[HistoryEntry] = []
+        for p in self._purchases:
+            entries.append(HistoryEntry(
+                round=p.round, status="committed",
+                category=p.category, brand=p.brand,
+                product=p.product_name, reason=p.reason,
+            ))
+        for f in self._failed_rounds:
+            entries.append(HistoryEntry(
+                round=f.round, status="failed",
+                reason=f.reason,
+            ))
+        entries.sort(key=lambda e: e.round)
+        return entries
+
+    def record_failed_round(self, reason: str) -> None:
+        if not self._round_open:
+            raise RuntimeError("round not open")
+        # Guard: do not record twice for the same round
+        if any(f.round == self._round for f in self._failed_rounds):
+            raise RuntimeError(f"round {self._round} already marked as failed")
+        # Guard: do not mark a round as failed if a purchase was already made
+        if any(p.round == self._round for p in self._purchases):
+            raise RuntimeError(f"round {self._round} already has a purchase")
+        self._failed_rounds.append(
+            FailedRound(round=self._round, budget=self._budget, reason=reason)
+        )
+        self._append(Event.ROUND_FAILED, {"reason": reason})
 
     def _append(self, event: Event, payload: dict) -> None:
         self._seq += 1
@@ -189,3 +205,4 @@ class StoreEnv:
     def history_for_prompt(self) -> list[dict]:
         """History as plain dicts, ready to embed in the agent prompt."""
         return [h.model_dump() for h in self.history]
+

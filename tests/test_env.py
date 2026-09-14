@@ -1,0 +1,171 @@
+# tests/test_env.py
+import pytest
+
+
+def test_initial_state(env):
+    assert env.round == 1
+    assert env.finished is False
+    assert env.purchases == []
+    assert env.failed_rounds == []
+    assert env.history == []
+
+
+def test_begin_round_loads_budget(env):
+    env.begin_round()
+    assert env.budget == 100.0
+    env.close_round()
+    env.begin_round()
+    assert env.budget == 50.0
+
+
+def test_begin_round_twice_raises(env):
+    env.begin_round()
+    with pytest.raises(RuntimeError, match="round already open"):
+        env.begin_round()
+
+
+def test_close_round_without_begin_raises(env):
+    with pytest.raises(RuntimeError, match="round not open"):
+        env.close_round()
+
+
+def test_get_products_filters_category_and_availability(env):
+    env.begin_round()
+    dairy = env.get_products("dairy")
+    ids = {p.product_id for p in dairy}
+    assert ids == {"p1", "p2"}          # p4 ناموجود، p3 category دیگر
+    laundry = env.get_products("laundry")
+    assert {p.product_id for p in laundry} == {"p3"}
+    unknown = env.get_products("nonexistent")
+    assert unknown == []
+
+
+def test_get_products_price_is_round_specific(env):
+    env.begin_round()
+    p1 = next(p for p in env.get_products("dairy") if p.product_id == "p1")
+    assert p1.price == 10.0
+    env.close_round()
+    env.begin_round()
+    # در راند ۲ p1 ناموجود است
+    assert all(p.product_id != "p1" for p in env.get_products("dairy"))
+
+
+def test_commit_purchase_happy_path(env):
+    env.begin_round()
+    result = env.commit_purchase("p1", reason="cheap")
+    assert result.ok is True
+    assert result.record.round == 1
+    assert result.record.product_name == "Butter"
+    assert result.record.price_paid == 10.0
+    assert len(env.purchases) == 1
+
+
+def test_commit_unknown_product(env):
+    env.begin_round()
+    result = env.commit_purchase("p999", reason="x")
+    assert result.ok is False
+    assert result.reason == "unknown_product"
+    assert env.purchases == []
+
+
+def test_commit_unavailable_product(env):
+    env.begin_round()
+    result = env.commit_purchase("p4", reason="x")   # p4 ناموجود در راند ۱
+    assert result.ok is False
+    assert result.reason == "not_available_this_round"
+
+
+def test_commit_over_budget(env):
+    env.begin_round()      # بودجه ۱۰۰
+    env.close_round()
+    env.begin_round()      # بودجه ۵۰
+    result = env.commit_purchase("p3", reason="x")   # قیمت ۸۰
+    assert result.ok is False
+    assert result.reason == "over_budget"
+
+
+def test_commit_outside_round_raises_validation(env):
+    result = env.commit_purchase("p1", reason="x")
+    assert result.ok is False
+    assert result.reason == "round_not_open"
+
+
+def test_record_failed_round(env):
+    env.begin_round()
+    env.record_failed_round("agent exhausted retries")
+    assert len(env.failed_rounds) == 1
+    assert env.failed_rounds[0].round == 1
+    assert env.failed_rounds[0].reason == "agent exhausted retries"
+
+
+def test_record_failed_round_twice_raises(env):
+    env.begin_round()
+    env.record_failed_round("first")
+    with pytest.raises(RuntimeError, match="already marked as failed"):
+        env.record_failed_round("second")
+
+
+def test_record_failed_after_purchase_raises(env):
+    env.begin_round()
+    env.commit_purchase("p1", reason="x")
+    with pytest.raises(RuntimeError, match="already has a purchase"):
+        env.record_failed_round("x")
+
+
+def test_history_mixes_committed_and_failed(env):
+    # راند ۱: خرید
+    env.begin_round()
+    env.commit_purchase("p1", reason="r1")
+    env.close_round()
+
+    # راند ۲: failed
+    env.begin_round()
+    env.record_failed_round("no valid product")
+    env.close_round()
+
+    # راند ۳: خرید
+    env.begin_round()
+    env.commit_purchase("p2", reason="r3")
+    env.close_round()
+
+    h = env.history
+    assert len(h) == 3
+    assert h[0].round == 1 and h[0].status == "committed"
+    assert h[1].round == 2 and h[1].status == "failed"
+    assert h[2].round == 3 and h[2].status == "committed"
+
+
+def test_finished_after_all_rounds(env):
+    for _ in range(3):
+        env.begin_round()
+        env.commit_purchase("p1" if env.round == 1 else "p2", reason="x")
+        env.close_round()
+    assert env.finished is True
+    with pytest.raises(RuntimeError, match="episode finished"):
+        env.begin_round()
+
+
+def test_invalid_schedule_unknown_product(catalog):
+    from store.engine import StoreEnv
+    from store.models import RoundSpec, ListingEntry
+    bad_schedule = [RoundSpec(budget=10, listings={"zzz": ListingEntry(available=1, price=1)})]
+    with pytest.raises(ValueError, match="unknown product"):
+        StoreEnv(catalog=catalog, schedule=bad_schedule)
+
+
+def test_invalid_schedule_negative_budget(catalog):
+    from store.engine import StoreEnv
+    from store.models import RoundSpec
+    bad = [RoundSpec(budget=-1, listings={})]
+    with pytest.raises(ValueError, match="negative budget"):
+        StoreEnv(catalog=catalog, schedule=bad)
+
+
+def test_event_log_sequence(env):
+    env.begin_round()
+    env.commit_purchase("p1", reason="x")
+    env.close_round()
+    events = [e.event.value for e in env.event_log]
+    assert events == ["round_started", "purchase", "round_closed"]
+    seqs = [e.seq for e in env.event_log]
+    assert seqs == [1, 2, 3]
