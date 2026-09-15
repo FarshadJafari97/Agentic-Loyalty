@@ -33,7 +33,7 @@ def test_get_products_filters_category_and_availability(env):
     env.begin_round()
     dairy = env.get_products("dairy")
     ids = {p.product_id for p in dairy}
-    assert ids == {"p1", "p2"}          # p4 ناموجود، p3 category دیگر
+    assert ids == {"p1", "p2"}          # p4 is unavailable and p3 is not dairy
     laundry = env.get_products("laundry")
     assert {p.product_id for p in laundry} == {"p3"}
     unknown = env.get_products("nonexistent")
@@ -46,7 +46,7 @@ def test_get_products_price_is_round_specific(env):
     assert p1.price == 10.0
     env.close_round()
     env.begin_round()
-    # در راند ۲ p1 ناموجود است
+    # p1 is unavailable in round 2, so it should not be returned
     assert all(p.product_id != "p1" for p in env.get_products("dairy"))
 
 
@@ -70,16 +70,16 @@ def test_commit_unknown_product(env):
 
 def test_commit_unavailable_product(env):
     env.begin_round()
-    result = env.commit_purchase("p4", reason="x")   # p4 ناموجود در راند ۱
+    result = env.commit_purchase("p4", reason="x")  # p4 is unavailable in round 1
     assert result.ok is False
     assert result.reason == "not_available_this_round"
 
 
 def test_commit_over_budget(env):
-    env.begin_round()      # بودجه ۱۰۰
+    env.begin_round()      # budget 100
     env.close_round()
-    env.begin_round()      # بودجه ۵۰
-    result = env.commit_purchase("p3", reason="x")   # قیمت ۸۰
+    env.begin_round()      # budget 50
+    result = env.commit_purchase("p3", reason="x")   # price 80
     assert result.ok is False
     assert result.reason == "over_budget"
 
@@ -113,17 +113,17 @@ def test_record_failed_after_purchase_raises(env):
 
 
 def test_history_mixes_committed_and_failed(env):
-    # راند ۱: خرید
+    # round 1 : buy
     env.begin_round()
     env.commit_purchase("p1", reason="r1")
     env.close_round()
 
-    # راند ۲: failed
+    # round 2: failed
     env.begin_round()
     env.record_failed_round("no valid product")
     env.close_round()
 
-    # راند ۳: خرید
+    # round 3: buy
     env.begin_round()
     env.commit_purchase("p2", reason="r3")
     env.close_round()

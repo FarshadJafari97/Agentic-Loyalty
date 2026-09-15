@@ -21,12 +21,12 @@ def schedule():
             "p1": ListingEntry(available=1, price=10.0),
             "p2": ListingEntry(available=1, price=15.0),
             "p3": ListingEntry(available=1, price=20.0),
-            "p4": ListingEntry(available=0, price=12.0),   # ناموجود
+            "p4": ListingEntry(available=0, price=12.0),  # Unavailable
         }),
         RoundSpec(budget=50.0, listings={
             "p1": ListingEntry(available=0, price=10.0),
             "p2": ListingEntry(available=1, price=15.0),
-            "p3": ListingEntry(available=1, price=80.0),   # over budget در راند ۲
+            "p3": ListingEntry(available=1, price=80.0),   # Over Budget
             "p4": ListingEntry(available=1, price=12.0),
         }),
         RoundSpec(budget=100.0, listings={
