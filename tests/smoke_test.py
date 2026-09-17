@@ -9,16 +9,18 @@ Usage:
     python scripts/smoke_test.py
 """
 from __future__ import annotations
+from dotenv import load_dotenv
 
 import os
 import sys
 from pathlib import Path
 
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 # Make project root importable when running as a script
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from langchain_openai import ChatOpenAI
-
 from store.engine import StoreEnv
 from store.models import ProductSpec, RoundSpec, ListingEntry
 from orchestrator import run_episode
@@ -161,19 +163,21 @@ def check_reason_consistency(env, schedule, catalog) -> list[str]:
                     f"r{r}: code 1 but no equal-quality alternative exists "
                     f"(chosen quality={chosen_spec.quality})"
                 )
-
     return issues
 
 
 def main() -> None:
-    if not os.environ.get("OPENAI_API_KEY"):
-        print("ERROR: OPENAI_API_KEY is not set.")
+    api_key = os.environ.get("API_KEY")
+    if not api_key:
+        print("ERROR: API_KEY is not set.")
+        print("Create a .env file with API_KEY=... next to the project root,")
+        print("or export it in your shell: export API_KEY=sk-...")
         sys.exit(1)
 
     llm = ChatOpenAI(
-        model= "gpt-5.6-luna",
-        base_url= "https://api.gapgpt.app/v1",
-
+        model=os.environ.get("MODEL"),
+        base_url=os.environ.get("BASE_URL"),
+        api_key=api_key,
     )
     env = StoreEnv(catalog=CATALOG, schedule=SCHEDULE)
 
