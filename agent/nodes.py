@@ -28,7 +28,7 @@ def make_extract_category(llm, allowed_categories: list[str]):
     return extract_category
 
 
-# ── Node: fetch_products (no LLM) ─────────────────────────
+# ── Node: fetch_products ──────────────────────────────────
 def make_fetch_products(env: StoreEnv):
     def fetch_products(state: AgentState) -> dict:
         products = env.get_products(state["category"])
@@ -48,43 +48,35 @@ def make_fetch_products(env: StoreEnv):
     return fetch_products
 
 
-# ── Node: decide (LLM picks product + reason) ─────────────
+# ── Node: decide ──────────────────────────────────────────
 def make_decide(llm):
     structured = llm.with_structured_output(PurchaseChoice)
 
     def decide(state: AgentState) -> dict:
         result = structured.invoke([
-            {
-                "role": "system",
-                "content": purchase_system_prompt(),
-            },
-            {
-                "role": "user",
-                "content": purchase_user_prompt(
-                    user_request=state["user_request"],
-                    budget=state["budget"],
-                    history=state["history"],
-                    products=state["products"],
-                    last_error=state.get("last_commit_error"),
-                ),
-            },
+            {"role": "system", "content": purchase_system_prompt()},
+            {"role": "user",   "content": purchase_user_prompt(
+                user_request=state["user_request"],
+                budget=state["budget"],
+                history=state["history"],
+                products=state["products"],
+                last_error=state.get("last_commit_error"),
+            )},
         ])
         return {
             "chosen_product_id": result.product_id,
-            "chosen_reason_code": result.reason_code.value,
-            "chosen_reason_note": result.reason_note,
+            "chosen_reason_text": result.reason_text,
             "last_commit_error": None,
         }
     return decide
 
 
-# ── Node: commit (no LLM) ─────────────────────────────────
+# ── Node: commit ──────────────────────────────────────────
 def make_commit(env: StoreEnv):
     def commit(state: AgentState) -> dict:
         result = env.commit_purchase(
             product_id=state["chosen_product_id"],
-            reason_code=state["chosen_reason_code"],
-            reason_note=state.get("chosen_reason_note"),
+            reason_text=state["chosen_reason_text"],
         )
         if result.ok:
             return {"status": "committed", "failure_reason": None}
@@ -92,7 +84,7 @@ def make_commit(env: StoreEnv):
             "commit_retries": state.get("commit_retries", 0) + 1,
             "last_commit_error": (
                 f"commit failed: {result.reason}. "
-                f"Pick a valid product and a valid reason_code."
+                f"Pick a product that is available this round and within budget."
             ),
         }
     return commit
@@ -103,7 +95,6 @@ def make_finalize(env: StoreEnv):
     def finalize(state: AgentState) -> dict:
         if state.get("status") == "committed":
             return {}
-        # not committed → record failed round
         reason = (
             state.get("last_commit_error")
             or state.get("last_category_error")

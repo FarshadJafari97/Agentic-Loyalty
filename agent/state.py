@@ -13,17 +13,16 @@ class AgentState(TypedDict, total=False):
     # ── working state ──
     category: str | None
     products: list[dict]
-    chosen_product_id : str | None
-    chosen_reason_code: str | None
-    chosen_reason_note: str | None
+    chosen_product_id: str | None
+    chosen_reason_text: str | None
 
     # ── retry counters ──
     category_retries: int
     commit_retries: int
 
-    # ── last error feedback (fed back into the next LLM call) ──
-    last_category_error : str | None
-    last_commit_error   : str | None
+    # ── last error feedback ──
+    last_category_error: str | None
+    last_commit_error: str | None
 
     # ── final status ──
     status: str

@@ -52,6 +52,11 @@ class RoundSpec(BaseModel):
 
 
 class PurchaseRecord(BaseModel):
+    """Full record of a committed purchase.
+
+    reason_text is what the agent said at decision time.
+    reason_code / reason_note are filled LATER by the classifier, not by the agent.
+    """
     round: int
     product_id: str
     product_name: str
@@ -59,8 +64,9 @@ class PurchaseRecord(BaseModel):
     brand: str
     price_paid: float
     budget: float
-    reason_code: str     
-    reason_note: str | None = None
+    reason_text: str
+    reason_code: str | None = None      # filled by classifier
+    reason_note: str | None = None      # filled by classifier
 
 
 class FailedRound(BaseModel):
@@ -71,16 +77,19 @@ class FailedRound(BaseModel):
 
 
 class HistoryEntry(BaseModel):
-    """Unified history entry: either a committed purchase or a failed round."""
+    """Unified history entry: either a committed purchase or a failed round.
+
+    Only committed purchases carry product_id/brand/price. Failed rounds
+    carry only round, status, and reason.
+    """
     round: int
-    status: str
-    product_id: str | None = None      # ← اضافه شد
+    status: str                          # "committed" | "failed"
+    product_id: str | None = None
     category: str | None = None
     brand: str | None = None
-    product: str | None = None         # نام محصول
+    product: str | None = None
     price_paid: float | None = None
-    reason_code: str | None = None
-    reason_note: str | None = None
+    reason_text: str | None = None
 
 
 class ValidationResult(BaseModel):

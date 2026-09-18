@@ -80,24 +80,24 @@ class StoreEnv:
 
     @property
     def history(self) -> list[HistoryEntry]:
+        """All rounds so far, sorted by round: committed purchases and failed rounds."""
         entries: list[HistoryEntry] = []
         for p in self._purchases:
             entries.append(HistoryEntry(
                 round=p.round,
                 status="committed",
-                product_id=p.product_id,       # ← اضافه شد
+                product_id=p.product_id,
                 category=p.category,
                 brand=p.brand,
                 product=p.product_name,
                 price_paid=p.price_paid,
-                reason_code=p.reason_code,
-                reason_note=p.reason_note,
+                reason_text=p.reason_text,
             ))
         for f in self._failed_rounds:
             entries.append(HistoryEntry(
                 round=f.round,
                 status="failed",
-                reason_note=f.reason,
+                reason_text=f.reason,
             ))
         entries.sort(key=lambda e: e.round)
         return entries
@@ -181,18 +181,11 @@ class StoreEnv:
             return ValidationResult(ok=False, reason="over_budget")
         return ValidationResult(ok=True)
 
-    def commit_purchase(
-        self,
-        product_id: str,
-        reason_code: str,
-        reason_note: str | None = None,
-    ) -> CommitResult:
+    def commit_purchase(self, product_id: str, reason_text: str) -> CommitResult:
         """Commit a purchase. Returns ok=False on failure so the agent can retry.
-        reason_code must be one of the codes defined by the experiment ("1".."8").
-        reason_note is required only when reason_code == "8" (OTHER); otherwise it
-        may be None. The environment does not validate the semantic meaning of the
-        code — that is the agent's responsibility — but it does enforce the
-        structural rule (note required for "8").
+
+        The agent provides only product_id and a free-text reason.
+        The reason_code is assigned later by the classifier.
         """
         check = self.validate_purchase(product_id)
         if not check.ok:
@@ -200,12 +193,27 @@ class StoreEnv:
                 Event.PURCHASE,
                 {
                     "product_id": product_id,
-                    "reason_code": reason_code,
-                    "reason_note": reason_note,
+                    "reason_text": reason_text,
                     "rejected": check.reason,
                 },
             )
             return CommitResult(ok=False, reason=check.reason)
+
+        spec = self._catalog[product_id]
+        entry = self._current_spec.listings[product_id]
+        record = PurchaseRecord(
+            round=self._round,
+            product_id=product_id,
+            product_name=spec.name,
+            category=spec.category,
+            brand=spec.brand,
+            price_paid=entry.price,
+            budget=self._budget,
+            reason_text=reason_text,
+        )
+        self._purchases.append(record)
+        self._append(Event.PURCHASE, record.model_dump())
+        return CommitResult(ok=True, record=record)
 
         # Structural rule: OTHER ("8") must carry a note.
         if reason_code == "8" and not reason_note:
