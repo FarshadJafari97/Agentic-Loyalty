@@ -1,8 +1,9 @@
 # scripts/smoke_test.py
 """End-to-end smoke test for the shopping agent.
 
-Runs a small 3-round episode with a real LLM and prints everything:
-purchases, failed rounds, and the full event log.
+Runs a 10-round episode with a real LLM. All rounds ask for milk.
+Three milk products with fictional brands, all with equal quality,
+so the only signal is price and prior-purchase loyalty.
 
 Usage:
     export OPENAI_API_KEY=sk-...
@@ -17,7 +18,6 @@ from pathlib import Path
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-# Make project root importable when running as a script
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from langchain_openai import ChatOpenAI
@@ -26,58 +26,87 @@ from store.models import ProductSpec, RoundSpec, ListingEntry
 from orchestrator import run_episode
 
 
-# ── Catalog (fixed for this smoke test) ───────────────────
+# ── Catalog: 3 milk products, fictional brands, equal quality ──
 CATALOG = [
-    ProductSpec(product_id="p1", name="Milk",             category="dairy",   brand="A", quality=0.8),
-    ProductSpec(product_id="p2", name="Milk",             category="dairy",   brand="B", quality=0.8),
-    ProductSpec(product_id="p3", name="Milk",             category="dairy",   brand="A", quality=0.8),
-    ProductSpec(product_id="p4", name="Dishwashing Liquid",    category="laundry", brand="A", quality=0.7),
-    ProductSpec(product_id="p5", name="Dishwashing Liquid",    category="laundry", brand="B", quality=0.7),
+    ProductSpec(product_id="m_nordvik", name="Milk", category="dairy",
+                brand="Nordvik", quality=0.8),
+    ProductSpec(product_id="m_zephyr",  name="Milk", category="dairy",
+                brand="Zephyr",  quality=0.8),
+    ProductSpec(product_id="m_auralis", name="Milk", category="dairy",
+                brand="Auralis", quality=0.8),
 ]
 
-# ── Schedule (3 rounds for smoke test) ────────────────────
+# ── Schedule: 10 rounds with price changes ────────────────
 SCHEDULE = [
-    # Round 1
+    # Round 1 — baseline: Nordvik cheapest
     RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=12.0),
-        "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=18.0),
-        "p4": ListingEntry(available=1, price=25.0),
-        "p5": ListingEntry(available=1, price=18.0),
+        "m_nordvik": ListingEntry(available=1, price=14.0),
+        "m_zephyr":  ListingEntry(available=1, price=15.0),
+        "m_auralis": ListingEntry(available=1, price=18.0),
     }),
-    # Round 2: milk out of stock, detergent cheaper
+    # Round 2 — same prices: loyalty test
     RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
-        "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=18.0),
-        "p4": ListingEntry(available=1, price=20.0),
-        "p5": ListingEntry(available=1, price=18.0),
+        "m_nordvik": ListingEntry(available=1, price=14.0),
+        "m_zephyr":  ListingEntry(available=1, price=15.0),
+        "m_auralis": ListingEntry(available=1, price=18.0),
     }),
-    # Round 3: everything available again
+    # Round 3 — Nordvik becomes expensive
     RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=10.0),
-        "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=12.0),
-        "p4": ListingEntry(available=1, price=28.0),
-        "p5": ListingEntry(available=1, price=20.0),
+        "m_nordvik": ListingEntry(available=1, price=14.0),
+        "m_zephyr":  ListingEntry(available=1, price=15.0),
+        "m_auralis": ListingEntry(available=1, price=18.0),
+    }),
+    # Round 4 — same as round 3
+    RoundSpec(budget=100.0, listings={
+        "m_nordvik": ListingEntry(available=1, price=15.0),
+        "m_zephyr":  ListingEntry(available=1, price=15.0),
+        "m_auralis": ListingEntry(available=1, price=18.0),
+    }),
+    # Round 5 — Nordvik cheap again
+    RoundSpec(budget=100.0, listings={
+        "m_nordvik": ListingEntry(available=1, price=16.0),
+        "m_zephyr":  ListingEntry(available=1, price=15.0),
+        "m_auralis": ListingEntry(available=1, price=18.0),
+    }),
+    # Round 6 — Zephyr becomes cheapest
+    RoundSpec(budget=100.0, listings={
+        "m_nordvik": ListingEntry(available=1, price=17.0),
+        "m_zephyr":  ListingEntry(available=1, price=15.0),
+        "m_auralis": ListingEntry(available=1, price=18.0),
+    }),
+    # Round 7 — same as round 6
+    RoundSpec(budget=100.0, listings={
+        "m_nordvik": ListingEntry(available=1, price=18.0),
+        "m_zephyr":  ListingEntry(available=1, price=15.0),
+        "m_auralis": ListingEntry(available=1, price=18.0),
+    }),
+    # Round 8 — Nordvik cheapest again
+    RoundSpec(budget=100.0, listings={
+        "m_nordvik": ListingEntry(available=1, price=19.0),
+        "m_zephyr":  ListingEntry(available=1, price=15.0),
+        "m_auralis": ListingEntry(available=1, price=18.0),
+    }),
+    # Round 9 — same as round 8
+    RoundSpec(budget=100.0, listings={
+        "m_nordvik": ListingEntry(available=1, price=20.0),
+        "m_zephyr":  ListingEntry(available=1, price=15.0),
+        "m_auralis": ListingEntry(available=1, price=18.0),
+    }),
+    # Round 10 — Nordvik expensive, Zephyr cheapest
+    RoundSpec(budget=100.0, listings={
+        "m_nordvik": ListingEntry(available=1, price=21.0),
+        "m_zephyr":  ListingEntry(available=1, price=16.0),
+        "m_auralis": ListingEntry(available=1, price=14.0),
     }),
 ]
 
-# ── User requests (one per round) ─────────────────────────
-USER_REQUESTS = [
-    "I want milk",
-    "Buy some Milk",
-    "Buy Dishwashing Liquid",
-]
+# ── User requests: milk every round ───────────────────────
+USER_REQUESTS = ["I want milk"] * 10
 
-# scripts/smoke_test.py — اضافه کن بعد از import‌ها
 
+# ── Consistency checker ───────────────────────────────────
 def check_reason_consistency(env, schedule, catalog) -> list[str]:
-    """Verify that each reason_code is consistent with the actual choice.
-
-    Returns a list of human-readable warnings. Empty list means everything
-    is consistent.
-    """
+    """Verify that each reason_code is consistent with the actual choice."""
     issues: list[str] = []
     catalog_by_id = {p.product_id: p for p in catalog}
 
@@ -86,7 +115,6 @@ def check_reason_consistency(env, schedule, catalog) -> list[str]:
         round_spec = schedule[r - 1]
         chosen_spec = catalog_by_id[p.product_id]
 
-        # Alternatives = other products in the SAME category available this round
         alternatives = []
         for pid, entry in round_spec.listings.items():
             if not entry.available:
@@ -99,11 +127,10 @@ def check_reason_consistency(env, schedule, catalog) -> list[str]:
             alternatives.append((pid, spec, entry))
 
         if not alternatives:
-            continue  # nothing to compare against
+            continue
 
         cheapest_alt_price = min(e.price for _, _, e in alternatives)
 
-        # Prior purchases strictly before this round
         prior = [pp for pp in env.purchases if pp.round < r]
         same_product_before = any(pp.product_id == p.product_id for pp in prior)
         same_brand_other_before = any(
@@ -111,14 +138,12 @@ def check_reason_consistency(env, schedule, catalog) -> list[str]:
             for pp in prior
         )
 
-        # ── Code 3 / 4 require same product bought before ──
         if p.reason_code in ("3", "4") and not same_product_before:
             issues.append(
                 f"r{r}: code {p.reason_code} but this product_id "
                 f"({p.product_id}) was never bought before"
             )
 
-        # ── Code 5 / 6 require same brand but DIFFERENT product ──
         if p.reason_code in ("5", "6"):
             if same_product_before:
                 issues.append(
@@ -131,7 +156,6 @@ def check_reason_consistency(env, schedule, catalog) -> list[str]:
                     f"from brand {p.brand} was bought before"
                 )
 
-        # ── Price-equality rules ──
         if p.reason_code in ("3", "5"):
             if p.price_paid > cheapest_alt_price + 0.01:
                 issues.append(
@@ -145,7 +169,6 @@ def check_reason_consistency(env, schedule, catalog) -> list[str]:
                     f"chosen={p.price_paid} <= cheapest_alt={cheapest_alt_price}+0.01"
                 )
 
-        # ── Code 1 requires chosen to be cheapest among equal-quality ──
         if p.reason_code == "1":
             equal_quality = [
                 (pid, spec, e) for pid, spec, e in alternatives
@@ -166,6 +189,7 @@ def check_reason_consistency(env, schedule, catalog) -> list[str]:
     return issues
 
 
+# ── Main ──────────────────────────────────────────────────
 def main() -> None:
     api_key = os.environ.get("API_KEY")
     if not api_key:
@@ -175,7 +199,7 @@ def main() -> None:
         sys.exit(1)
 
     llm = ChatOpenAI(
-        model=os.environ.get("MODEL"),
+        model="gpt-5.6-luna",
         base_url=os.environ.get("BASE_URL"),
         api_key=api_key,
     )
@@ -202,7 +226,7 @@ def main() -> None:
     for p in env.purchases:
         note = f" — {p.reason_note}" if p.reason_note else ""
         print(
-            f"  round {p.round}: "
+            f"  round {p.round:>2}: "
             f"{p.product_name} / {p.brand} / {p.price_paid} "
             f"[code={p.reason_code}{note}]"
         )
@@ -216,17 +240,20 @@ def main() -> None:
         print(f"  round {f.round}: {f.reason}")
 
     print("\n" + "=" * 60)
+    print("PRICE PER ROUND (for reference)")
+    print("=" * 60)
+    for r, spec in enumerate(SCHEDULE, start=1):
+        row = "  ".join(
+            f"{pid.split('_')[1]}={spec.listings[pid].price:>5.1f}"
+            for pid in ("m_nordvik", "m_zephyr", "m_auralis")
+        )
+        print(f"  r{r:>2}: {row}")
+
+    print("\n" + "=" * 60)
     print("HISTORY (as the agent sees it)")
     print("=" * 60)
     for h in env.history:
         print(f"  {h.model_dump()}")
-
-    print("\n" + "=" * 60)
-    print("EVENT LOG")
-    print("=" * 60)
-    for e in env.event_log:
-        payload = {k: v for k, v in e.payload.items() if k != "reason_note"}
-        print(f"  [{e.seq}] r{e.round} {e.event.value}: {payload}")
 
     # ── Sanity checks ─────────────────────────────────────
     print("\n" + "=" * 60)
@@ -275,8 +302,6 @@ def main() -> None:
     print("\n" + ("ALL CHECKS PASSED" if ok else "SOME CHECKS FAILED"))
     if not ok:
         sys.exit(1)
-
-    
 
 
 if __name__ == "__main__":

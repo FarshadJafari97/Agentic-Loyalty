@@ -28,5 +28,5 @@ class PurchaseChoice(BaseModel):
     )
     reason_note: str | None = Field(
         default=None,
-        description='Required only when reason_code == "8" (OTHER).',
+        description='You Can optionally provide a short note explaining your choice. If you do, it should be concise and relevant to the reason code you selected.',
     )
