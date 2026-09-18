@@ -1,4 +1,4 @@
-# scripts/smoke_test.py
+# tests/smoke_test.py
 
 from langchain_openai import ChatOpenAI   
 from store.engine import StoreEnv
@@ -50,7 +50,7 @@ USER_REQUESTS = [
 
 def main():
     llm = ChatOpenAI(
-        model = "gemini-3.6-flash",
+        model = "auto",
         base_url= "http://127.0.0.1:31415/v1" ,
         api_key= "freellmapi-704878672ffd732da01727053c869683948f26decc0f8713"
     )
