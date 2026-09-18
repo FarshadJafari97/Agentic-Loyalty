@@ -52,6 +52,7 @@ class RoundSpec(BaseModel):
 
 
 class PurchaseRecord(BaseModel):
+    """Full record of a committed purchase."""
     round: int
     product_id: str
     product_name: str
@@ -59,8 +60,7 @@ class PurchaseRecord(BaseModel):
     brand: str
     price_paid: float
     budget: float
-    reason_code: str     
-    reason_note: str | None = None
+    reason: str
 
 
 class FailedRound(BaseModel):
@@ -73,14 +73,11 @@ class FailedRound(BaseModel):
 class HistoryEntry(BaseModel):
     """Unified history entry: either a committed purchase or a failed round."""
     round: int
-    status: str
-    product_id: str | None = None      # ← اضافه شد
+    status: str                          # "committed" | "failed"
     category: str | None = None
     brand: str | None = None
-    product: str | None = None         # نام محصول
-    price_paid: float | None = None
-    reason_code: str | None = None
-    reason_note: str | None = None
+    product: str | None = None
+    reason: str | None = None
 
 
 class ValidationResult(BaseModel):
