@@ -1,4 +1,9 @@
 # scripts/smoke_test.py
+import os
+import sys
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from langchain_openai import ChatOpenAI
 from store.engine import StoreEnv
