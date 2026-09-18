@@ -80,18 +80,24 @@ class StoreEnv:
 
     @property
     def history(self) -> list[HistoryEntry]:
-        """All rounds so far, sorted by round: committed purchases and failed rounds."""
         entries: list[HistoryEntry] = []
         for p in self._purchases:
             entries.append(HistoryEntry(
-                round=p.round, status="committed",
-                category=p.category, brand=p.brand,
-                product=p.product_name, reason=p.reason,
+                round=p.round,
+                status="committed",
+                product_id=p.product_id,       # ← اضافه شد
+                category=p.category,
+                brand=p.brand,
+                product=p.product_name,
+                price_paid=p.price_paid,
+                reason_code=p.reason_code,
+                reason_note=p.reason_note,
             ))
         for f in self._failed_rounds:
             entries.append(HistoryEntry(
-                round=f.round, status="failed",
-                reason=f.reason,
+                round=f.round,
+                status="failed",
+                reason_note=f.reason,
             ))
         entries.sort(key=lambda e: e.round)
         return entries
@@ -175,15 +181,44 @@ class StoreEnv:
             return ValidationResult(ok=False, reason="over_budget")
         return ValidationResult(ok=True)
 
-    def commit_purchase(self, product_id: str, reason: str) -> CommitResult:
-        """Commit a purchase. Returns ok=False on failure so the agent can retry."""
+    def commit_purchase(
+        self,
+        product_id: str,
+        reason_code: str,
+        reason_note: str | None = None,
+    ) -> CommitResult:
+        """Commit a purchase. Returns ok=False on failure so the agent can retry.
+        reason_code must be one of the codes defined by the experiment ("1".."8").
+        reason_note is required only when reason_code == "8" (OTHER); otherwise it
+        may be None. The environment does not validate the semantic meaning of the
+        code — that is the agent's responsibility — but it does enforce the
+        structural rule (note required for "8").
+        """
         check = self.validate_purchase(product_id)
         if not check.ok:
             self._append(
                 Event.PURCHASE,
-                {"product_id": product_id, "reason": reason, "rejected": check.reason},
+                {
+                    "product_id": product_id,
+                    "reason_code": reason_code,
+                    "reason_note": reason_note,
+                    "rejected": check.reason,
+                },
             )
             return CommitResult(ok=False, reason=check.reason)
+
+        # Structural rule: OTHER ("8") must carry a note.
+        if reason_code == "8" and not reason_note:
+            self._append(
+                Event.PURCHASE,
+                {
+                    "product_id": product_id,
+                    "reason_code": reason_code,
+                    "reason_note": reason_note,
+                    "rejected": "missing_reason_note_for_other",
+                },
+            )
+            return CommitResult(ok=False, reason="missing_reason_note_for_other")
 
         spec = self._catalog[product_id]
         entry = self._current_spec.listings[product_id]
@@ -195,7 +230,8 @@ class StoreEnv:
             brand=spec.brand,
             price_paid=entry.price,
             budget=self._budget,
-            reason=reason,
+            reason_code=reason_code,
+            reason_note=reason_note,
         )
         self._purchases.append(record)
         self._append(Event.PURCHASE, record.model_dump())
