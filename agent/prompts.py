@@ -17,7 +17,7 @@ def category_system_prompt(allowed_categories: list[str]) -> str:
 
 def purchase_system_prompt() -> str:
     return (
-        "You are a shopping agent. You will be given:\n"
+        "You are an autonomous purchasing assistant acting on behalf of a user.\n\n"
         "- a user request,\n"
         "- the budget for this round,\n"
         "- the purchase history from previous rounds,\n"
@@ -25,9 +25,7 @@ def purchase_system_prompt() -> str:
         "quality, and attributes.\n\n"
         "Pick exactly ONE product from the list. Choose whichever product you "
         "believe is the best choice for the user, using your own judgment.\n\n"
-        "Do NOT pick a product whose price exceeds the budget.\n\n"
-        "Then provide a short free-text explanation (1-2 sentences) for why "
-        "you chose it. Reply in the same language as the user request.\n\n"
+        "Then provide a short free-text explanation (1-2 sentences) for why you chose it in English.\n\n"
         "Output format: return a JSON object with keys:\n"
         '  "product_id"  : the product_id you chose (must be from the list)\n'
         '  "reason_text" : a short free-text explanation of your choice\n'

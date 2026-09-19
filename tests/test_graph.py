@@ -6,11 +6,11 @@ from agent.graph import build_graph
 from agent.schemas import CategoryChoice, PurchaseChoice
 
 
-# ── Fake LLM ────────────────────────────────────────────────
+# ── Fake LLM ──────────────────────────────────────────────
 class FakeStructuredLLM:
-    """LLM جعلی که خروجی ساختارمند از پیش تعیین‌شده می‌دهد."""
+    """Fake LLM that returns pre-canned structured responses."""
+
     def __init__(self, responses):
-        # responses: لیست از پاسخ‌ها به ترتیب (چرخشی یا بر اساس نوع)
         self._responses = list(responses)
         self._idx = 0
         self.calls = []
@@ -44,54 +44,55 @@ def small_env():
     return StoreEnv(catalog=catalog, schedule=schedule)
 
 
-def test_graph_happy_path(small_env):
-    """مسیر موفق: category درست → product درست → commit"""
-    llm = FakeStructuredLLM([
-        CategoryChoice(category="dairy"),
-        PurchaseChoice(product_id="p1", reason="cheap"),
-    ])
-    graph = build_graph(small_env, llm, allowed_categories=["dairy", "laundry"])
-    small_env.begin_round()
-
-    final = graph.invoke({
-        "user_request": "I want dairy",
-        "budget": small_env.budget,
-        "history": [],
-        "allowed_categories": ["dairy", "laundry"],
+def _invoke(graph, env, *, user_request="x", history=None,
+            allowed_categories=("dairy", "laundry")):
+    return graph.invoke({
+        "user_request": user_request,
+        "budget": env.budget,
+        "history": history or [],
+        "allowed_categories": list(allowed_categories),
         "products": [],
         "category_retries": 0,
         "commit_retries": 0,
         "status": "in_progress",
     })
 
-    assert final["status"] == "committed"
-    assert len(small_env.purchases) == 1
-    assert small_env.purchases[0].product_id == "p1"
 
-
-def test_graph_category_retry_then_success(small_env):
-    """category اشتباه → لیست خالی → retry → درست"""
+def test_graph_happy_path(small_env):
+    """Happy path: valid category → valid product → commit."""
     llm = FakeStructuredLLM([
-        CategoryChoice(category="nonexistent"),   # بار اول اشتباه
-        CategoryChoice(category="dairy"),         # retry
-        PurchaseChoice(product_id="p2", reason="ok"),
+        CategoryChoice(category="dairy"),
+        PurchaseChoice(product_id="p1", reason_text="cheap"),
     ])
     graph = build_graph(small_env, llm, allowed_categories=["dairy", "laundry"])
     small_env.begin_round()
 
-    final = graph.invoke({
-        "user_request": "x", "budget": small_env.budget, "history": [],
-        "allowed_categories": ["dairy", "laundry"],
-        "products": [], "category_retries": 0, "commit_retries": 0,
-        "status": "in_progress",
-    })
+    final = _invoke(graph, small_env, user_request="I want dairy")
+
+    assert final["status"] == "committed"
+    assert len(small_env.purchases) == 1
+    assert small_env.purchases[0].product_id == "p1"
+    assert small_env.purchases[0].reason_text == "cheap"
+
+
+def test_graph_category_retry_then_success(small_env):
+    """Wrong category → empty list → retry → valid."""
+    llm = FakeStructuredLLM([
+        CategoryChoice(category="nonexistent"),
+        CategoryChoice(category="dairy"),
+        PurchaseChoice(product_id="p2", reason_text="ok"),
+    ])
+    graph = build_graph(small_env, llm, allowed_categories=["dairy", "laundry"])
+    small_env.begin_round()
+
+    final = _invoke(graph, small_env)
 
     assert final["status"] == "committed"
     assert small_env.purchases[0].product_id == "p2"
 
 
 def test_graph_category_exhausted_fails(small_env):
-    """category همیشه اشتباه → بعد از max retries → failed"""
+    """Always-wrong category → after max retries → failed."""
     llm = FakeStructuredLLM([
         CategoryChoice(category="bad1"),
         CategoryChoice(category="bad2"),
@@ -100,12 +101,7 @@ def test_graph_category_exhausted_fails(small_env):
     graph = build_graph(small_env, llm, allowed_categories=["dairy"], max_category_retries=2)
     small_env.begin_round()
 
-    final = graph.invoke({
-        "user_request": "x", "budget": small_env.budget, "history": [],
-        "allowed_categories": ["dairy"],
-        "products": [], "category_retries": 0, "commit_retries": 0,
-        "status": "in_progress",
-    })
+    final = _invoke(graph, small_env, allowed_categories=("dairy",))
 
     assert final["status"] == "failed"
     assert len(small_env.failed_rounds) == 1
@@ -113,72 +109,64 @@ def test_graph_category_exhausted_fails(small_env):
 
 
 def test_graph_commit_retry_then_success(small_env):
-    """commit اشتباه (محصول over budget) → retry → موفق"""
+    """Bad commit (unknown product) → retry → valid."""
     llm = FakeStructuredLLM([
         CategoryChoice(category="dairy"),
-        PurchaseChoice(product_id="p999", reason="bad"),   # unknown → رد
-        PurchaseChoice(product_id="p1",   reason="ok"),    # درست
+        PurchaseChoice(product_id="p999", reason_text="bad"),
+        PurchaseChoice(product_id="p1",   reason_text="ok"),
     ])
     graph = build_graph(small_env, llm, allowed_categories=["dairy"])
     small_env.begin_round()
 
-    final = graph.invoke({
-        "user_request": "x", "budget": small_env.budget, "history": [],
-        "allowed_categories": ["dairy"],
-        "products": [], "category_retries": 0, "commit_retries": 0,
-        "status": "in_progress",
-    })
+    final = _invoke(graph, small_env, allowed_categories=("dairy",))
 
     assert final["status"] == "committed"
     assert small_env.purchases[0].product_id == "p1"
 
 
 def test_graph_commit_exhausted_fails(small_env):
-    """commit همیشه اشتباه → failed"""
+    """Always-bad commit → failed."""
     llm = FakeStructuredLLM([
         CategoryChoice(category="dairy"),
-        PurchaseChoice(product_id="p999", reason="bad"),
-        PurchaseChoice(product_id="p999", reason="bad"),
-        PurchaseChoice(product_id="p999", reason="bad"),
+        PurchaseChoice(product_id="p999", reason_text="bad"),
+        PurchaseChoice(product_id="p999", reason_text="bad"),
+        PurchaseChoice(product_id="p999", reason_text="bad"),
     ])
     graph = build_graph(small_env, llm, allowed_categories=["dairy"], max_commit_retries=3)
     small_env.begin_round()
 
-    final = graph.invoke({
-        "user_request": "x", "budget": small_env.budget, "history": [],
-        "allowed_categories": ["dairy"],
-        "products": [], "category_retries": 0, "commit_retries": 0,
-        "status": "in_progress",
-    })
+    final = _invoke(graph, small_env, allowed_categories=("dairy",))
 
     assert final["status"] == "failed"
     assert len(small_env.failed_rounds) == 1
 
 
 def test_graph_history_passed_to_decide(small_env):
-    """history باید در prompt تصمیم‌گیری به LLM برسد."""
+    """history must be embedded in the decision prompt."""
     llm = FakeStructuredLLM([
         CategoryChoice(category="dairy"),
-        PurchaseChoice(product_id="p1", reason="ok"),
+        PurchaseChoice(product_id="p1", reason_text="ok"),
     ])
     graph = build_graph(small_env, llm, allowed_categories=["dairy"])
     small_env.begin_round()
 
     history = [
-        {"round": 1, "status": "committed", "category": "dairy",
-         "brand": "A", "product": "Butter", "reason": "cheap"},
+        {
+            "round": 1,
+            "status": "committed",
+            "product_id": "p2",
+            "category": "dairy",
+            "brand": "B",
+            "product": "Milk",
+            "price_paid": 15.0,
+            "reason_text": "tried last week",
+        },
     ]
 
-    graph.invoke({
-        "user_request": "x", "budget": small_env.budget, "history": history,
-        "allowed_categories": ["dairy"],
-        "products": [], "category_retries": 0, "commit_retries": 0,
-        "status": "in_progress",
-    })
+    _invoke(graph, small_env, history=history, allowed_categories=("dairy",))
 
-    # second call = decide، باید history در promptش باشد
     decide_calls = [c for c in llm.calls if c[0] == "PurchaseChoice"]
     assert len(decide_calls) == 1
     user_msg = decide_calls[0][1][1]["content"]   # role=user
-    assert "Butter" in user_msg
-    assert "cheap" in user_msg
+    assert "tried last week" in user_msg
+    assert "Milk" in user_msg

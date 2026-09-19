@@ -50,6 +50,10 @@ class StoreEnv:
 
     # ── Round bookkeeping ──────────────────────────────────
     @property
+    def max_rounds(self) -> int:
+        return self._max_rounds
+    
+    @property
     def _current_spec(self) -> RoundSpec:
         """RoundSpec for the round currently in progress (or about to begin)."""
         return self._schedule[self._round - 1]
