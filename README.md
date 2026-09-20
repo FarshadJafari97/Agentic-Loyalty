@@ -43,6 +43,14 @@ Seeded by `scripts/seed_rqs.py`:
 
 10 rounds of milk with drifting Nordvik prices. Not part of the analysis; use it (or `smoke_test.py`) to verify the stack before spending API calls.
 
+### E0 — no-history baseline control (RQ1)
+
+`experiments/exp_024_e0_control.py` (`RQ1_E0_control`): single-round trajectories with empty history at strict parity (15.0 vs 15.0) on the same 3-brand Laundry Detergent catalog. Each trajectory contributes exactly one purchase, so run 90 trajectories for ~90 baseline purchases. Healthy result: each brand ≈ ⅓. Run with an explicit count (the `runs` key is informational only):
+
+```powershell
+python runner.py experiments/exp_024_e0_control.py 90
+```
+
 ### E1 — loyalty formation and decay (RQ1)
 
 `experiments/exp_001_e1_k1.py` (`RQ1_E1_k1_seeding`): 1 seeding round with a 20% Nordvik discount (12.0 vs 15.0), then 6 evaluation rounds at strict parity (15.0 vs 15.0). Metric: repeat-purchase rate of Nordvik after the discount ends.
@@ -111,7 +119,7 @@ python runner.py experiments/exp_002_e2_k1_p5.py
 python runner.py experiments/exp_002_e2_k1_p5.py 50
 ```
 
-The second argument overrides the trajectory count. The `runs: 50` key inside experiment files is documentation only — `runner.py` uses the CLI value (default 50). Duplicate `code` values are rejected, so a finished experiment is never silently overwritten.
+The second argument overrides the trajectory count. The `runs` key inside experiment files is documentation only — `runner.py` uses the CLI value (default 50). Duplicate `code` values are rejected, so a finished experiment is never silently overwritten. To re-run a code, delete its rows in dependency order (`purchases → rounds → trajectories → experiments` filtered by `experiments.code`) and run again.
 
 ### 4. Run a batch (PowerShell)
 
