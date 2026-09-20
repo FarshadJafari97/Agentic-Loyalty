@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class Event(str, Enum):
     ROUND_STARTED = "round_started"
     ROUND_CLOSED = "round_closed"
+    PRODUCTS_SHOWN = "products_shown"
     PURCHASE = "purchase"
     ROUND_FAILED = "round_failed"
 

@@ -27,6 +27,13 @@ A Python module exposing a top-level `EXPERIMENT` dict with keys:
     user_requests        list[str], one per round
     llm                  {"model": ..., "temperature": ..., "base_url": ...}
     agent                {"max_category_retries": ..., "max_commit_retries": ...}
+    presentation         (optional) {"order": "schedule" | "shuffle", "seed": int}
+                         Controls product display order. "schedule" (default)
+                         keeps listings dict order. "shuffle" deterministically
+                         shuffles per round from seed; the trajectory seed is
+                         base seed + (run_index - 1) so each trajectory sees a
+                         different but reproducible order. "shuffle" requires
+                         a seed. Omit the key for legacy fixed-order behavior.
 """
 from __future__ import annotations
 
@@ -107,6 +114,28 @@ def validate_experiment(exp: dict) -> None:
         if k not in agent:
             raise ValueError(f"agent config must contain '{k}'")
 
+    # ── Optional presentation config (defaults to fixed schedule order) ──
+    presentation = exp.get("presentation", {"order": "schedule"})
+    if not isinstance(presentation, dict):
+        raise ValueError("presentation must be a dict like "
+                         '{"order": "shuffle", "seed": 42}')
+    order = presentation.get("order", "schedule")
+    if order not in ("schedule", "shuffle"):
+        raise ValueError(f"presentation.order must be 'schedule' or 'shuffle', "
+                         f"got {order!r}")
+    seed = presentation.get("seed")
+    if order == "shuffle" and seed is None:
+        raise ValueError("presentation with order='shuffle' requires a 'seed'")
+    if seed is not None and not isinstance(seed, int):
+        raise ValueError("presentation.seed must be an int")
+
+
+def resolve_presentation(exp: dict) -> dict:
+    """Return the effective presentation config with defaults applied."""
+    presentation = dict(exp.get("presentation", {}))
+    presentation.setdefault("order", "schedule")
+    return presentation
+
 
 # ─────────────────────────────────────────────────────────
 # LLM factory
@@ -130,9 +159,21 @@ def build_llm(cfg: dict):
 # ─────────────────────────────────────────────────────────
 # One trajectory
 # ─────────────────────────────────────────────────────────
-def run_one_trajectory(session, traj_id: int, exp: dict, llm) -> None:
+def run_one_trajectory(session, traj_id: int, exp: dict, llm, run_index: int = 1) -> None:
     """Run a single trajectory and persist each round via the callback."""
-    env = StoreEnv(catalog=exp["catalog"], schedule=exp["schedule"])
+    presentation = resolve_presentation(exp)
+    order = presentation["order"]
+    # Offset the base seed per trajectory: different but reproducible
+    # presentation order in every trajectory.
+    seed = None
+    if order == "shuffle":
+        seed = presentation["seed"] + (run_index - 1)
+    env = StoreEnv(
+        catalog=exp["catalog"],
+        schedule=exp["schedule"],
+        order=order,
+        seed=seed,
+    )
     schedule = exp["schedule"]
 
     def on_round_complete(env: StoreEnv, finished_round: int) -> None:
@@ -187,6 +228,11 @@ def run_all(experiment_path: str, n_trajectories: int = 50) -> None:
             )
 
         # ── Create the experiment row (with full snapshot) ──
+        # Presentation config is snapshotted inside agent_config so the DB
+        # needs no schema migration; absence of the key means "schedule".
+        presentation = resolve_presentation(exp)
+        saved_agent_config = dict(exp["agent"])
+        saved_agent_config["presentation"] = presentation
         exp_id = repo.create_experiment(
             session,
             rq_id=exp["rq_id"],
@@ -198,7 +244,7 @@ def run_all(experiment_path: str, n_trajectories: int = 50) -> None:
             user_requests=exp["user_requests"],
             allowed_categories=sorted({p.category for p in exp["catalog"]}),
             llm_config=exp["llm"],
-            agent_config=exp["agent"],
+            agent_config=saved_agent_config,
         )
         session.commit()
         print(f"Created experiment '{exp['code']}' (id={exp_id})")
@@ -215,7 +261,7 @@ def run_all(experiment_path: str, n_trajectories: int = 50) -> None:
                   f"trajectory_id={traj_id} ... ", end="", flush=True)
 
             try:
-                run_one_trajectory(session, traj_id, exp, llm)
+                run_one_trajectory(session, traj_id, exp, llm, run_index=run_index)
                 repo.finish_trajectory(session, traj_id, status="finished")
                 session.commit()
                 succeeded += 1

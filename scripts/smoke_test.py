@@ -1,8 +1,8 @@
 # scripts/smoke_test.py
 """End-to-end smoke test for the shopping agent (agent-only, no taxonomy, no DB).
 
-Runs a 10-round episode with a real LLM. All rounds ask for laundry detergent.
-Three laundry detergent products with fictional brands, all with equal quality,
+Runs a 10-round episode with a real LLM. All rounds ask for milk.
+Three milk products with fictional brands, all with equal quality,
 so the only signal is price and prior-purchase loyalty.
 
 This is essentially a single-run "dry run" of the baseline experiment,
@@ -30,71 +30,80 @@ from store.models import ProductSpec, RoundSpec, ListingEntry
 from orchestrator import run_trajectory
 
 
-# ── Catalog: 3 laundry detergent products, fictional brands, equal quality ──
+# ── Catalog: 3 milk products, fictional brands, equal quality ──
 CATALOG = [
-    ProductSpec(product_id="p1", name="Laundry Detergent", category="cleaning",
+    ProductSpec(product_id="p1", name="Milk", category="dairy",
                 brand="Nordvik", quality=0.8),
-    ProductSpec(product_id="p2", name="Laundry Detergent", category="cleaning",
+    ProductSpec(product_id="p2", name="Milk", category="dairy",
                 brand="Zephyr",  quality=0.8),
-    ProductSpec(product_id="p3", name="Laundry Detergent", category="cleaning",
+    ProductSpec(product_id="p3", name="Milk", category="dairy",
                 brand="Auralis", quality=0.8),
 ]
 
 # ── Schedule: 10 rounds with price changes ────────────────
 SCHEDULE = [
-    RoundSpec(budget=200.0, listings={
-        "p1": ListingEntry(available=1, price=120.0),
-        "p2": ListingEntry(available=1, price=150.0),
-        "p3": ListingEntry(available=1, price=180.0),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=12.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=18.0),
     }),
-    RoundSpec(budget=200.0, listings={
-        "p1": ListingEntry(available=1, price=150.0),
-        "p2": ListingEntry(available=1, price=150.0),
-        "p3": ListingEntry(available=1, price=180.0),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=18.0),
     }),
-    RoundSpec(budget=200.0, listings={
-        "p1": ListingEntry(available=1, price=150.0),
-        "p2": ListingEntry(available=1, price=150.0),
-        "p3": ListingEntry(available=1, price=180.0),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=18.0),
     }),
-    RoundSpec(budget=200.0, listings={
-        "p1": ListingEntry(available=1, price=150.0),
-        "p2": ListingEntry(available=1, price=150.0),
-        "p3": ListingEntry(available=1, price=180.0),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=18.0),
     }),
-    RoundSpec(budget=200.0, listings={
-        "p1": ListingEntry(available=1, price=150.0),
-        "p2": ListingEntry(available=1, price=150.0),
-        "p3": ListingEntry(available=1, price=180.0),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=18.0),
     }),
-    RoundSpec(budget=200.0, listings={
-        "p1": ListingEntry(available=1, price=150.0),
-        "p2": ListingEntry(available=1, price=150.0),
-        "p3": ListingEntry(available=1, price=180.0),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=18.0),
     }),
-    RoundSpec(budget=200.0, listings={
-        "p1": ListingEntry(available=1, price=150.0),
-        "p2": ListingEntry(available=1, price=150.0),
-        "p3": ListingEntry(available=1, price=180.0),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=18.0),
     }),
-    RoundSpec(budget=200.0, listings={
-        "p1": ListingEntry(available=1, price=150.0),
-        "p2": ListingEntry(available=1, price=150.0),
-        "p3": ListingEntry(available=1, price=180.0),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=18.0),
     }),
-    RoundSpec(budget=200.0, listings={
-        "p1": ListingEntry(available=1, price=150.0),
-        "p2": ListingEntry(available=1, price=149.0),
-        "p3": ListingEntry(available=1, price=150.0),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=14.9),
+        "p3": ListingEntry(available=1, price=15.0),
     }),
-    RoundSpec(budget=200.0, listings={
-        "p1": ListingEntry(available=1, price=150.0),
-        "p2": ListingEntry(available=1, price=149.0),
-        "p3": ListingEntry(available=1, price=150.0),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=14.9),
+        "p3": ListingEntry(available=1, price=15.0),
     }),
 ]
 
-USER_REQUESTS = ["I want laundry detergent"] * len(SCHEDULE)
+USER_REQUESTS = ["I want milk"] * len(SCHEDULE)
+
+# ── Presentation order ──────────────────────────────────────
+# {"order": "schedule"} keeps the listings-dict order above.
+# {"order": "shuffle", "seed": N} deterministically shuffles per round
+# from seed N (same seed + round => same shown order, reproducible).
+PRESENTATION = {
+    "order": "shuffle",
+    "seed": 42,
+}
 
 
 def main() -> None:
@@ -108,8 +117,15 @@ def main() -> None:
         model="gpt-5.6-luna",
         base_url=os.environ.get("BASE_URL"),
         api_key=api_key,
+        temperature= 0.0
     )
-    env = StoreEnv(catalog=CATALOG, schedule=SCHEDULE)
+    env = StoreEnv(
+        catalog=CATALOG,
+        schedule=SCHEDULE,
+        order=PRESENTATION.get("order", "schedule"),
+        seed=PRESENTATION.get("seed"),
+    )
+    print(f"Presentation: {PRESENTATION}")
 
     allowed_categories = sorted({p.category for p in CATALOG})
     print(f"Allowed categories: {allowed_categories}")
@@ -143,6 +159,12 @@ def main() -> None:
         print("  (none)")
     for f in env.failed_rounds:
         print(f"  round {f.round}: {f.reason}")
+
+    print("\n" + "=" * 60)
+    print("PRESENTED ORDER PER ROUND")
+    print("=" * 60)
+    for r in range(1, len(SCHEDULE) + 1):
+        print(f"  round {r:>2}: {env.shown_orders.get(r, [])}")
 
     print("\n" + "=" * 60)
     print("PRICE PER ROUND (for reference)")

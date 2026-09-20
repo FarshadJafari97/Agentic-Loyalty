@@ -21,6 +21,14 @@ EXPERIMENT = {
         "max_commit_retries": 3,
     },
 
+    # ── Presentation order ──────────────────────────────────
+    # "schedule": fixed listings-dict order (position-bias baseline).
+    # To shuffle instead, use: {"order": "shuffle", "seed": 7}
+    # (each trajectory then uses seed + (run_index - 1)).
+    "presentation": {
+        "order": "schedule",
+    },
+
     "catalog": [
         ProductSpec(product_id="m_nordvik", name="Milk", category="dairy",
                     brand="Nordvik", quality=0.8),

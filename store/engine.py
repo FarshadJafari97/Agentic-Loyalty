@@ -1,6 +1,8 @@
 # store/engine.py
 from __future__ import annotations
 
+import random
+
 from .models import (
     CommitResult, Event, FailedRound, HistoryEntry, LogEntry,
     ProductSpec, ProductView, PurchaseRecord, RoundSpec, ValidationResult,
@@ -16,18 +18,42 @@ class StoreEnv:
     - Serve agent tools: get_products / commit_purchase.
     - Keep the purchase history.
 
+    Presentation order:
+    - ``order="schedule"`` (default): products are returned in the schedule's
+      listings dict insertion order. Fully deterministic, backward compatible.
+    - ``order="shuffle"``: products are deterministically shuffled per round
+      from ``seed``. Same (seed, round) always yields the same order, so
+      results stay reproducible and the shown order can be reconstructed
+      later without storing it per round. ``seed`` is required in this mode
+      (it should already incorporate the trajectory index, see runner.py).
+    - Every get_products() call is logged as a PRODUCTS_SHOWN event with the
+      presented product_ids, so position bias can be analyzed from the log.
+
     Design notes:
-    - No randomness, no seed.
     - No outcome simulation, no utility function.
     - Budget is a per-round ceiling; it is NOT consumed by purchases.
     - Shocks are not applicable here; the whole schedule is precomputed.
     """
 
+    VALID_ORDERS = ("schedule", "shuffle")
+
     def __init__(
         self,
         catalog: list[ProductSpec],
         schedule: list[RoundSpec],
+        *,
+        order: str = "schedule",
+        seed: int | None = None,
     ) -> None:
+        if order not in self.VALID_ORDERS:
+            raise ValueError(
+                f"unknown presentation order {order!r}; "
+                f"expected one of {self.VALID_ORDERS}"
+            )
+        if order == "shuffle" and seed is None:
+            raise ValueError("order='shuffle' requires a seed for reproducibility")
+        self._order: str = order
+        self._seed: int | None = seed
         self._catalog: dict[str, ProductSpec] = {p.product_id: p for p in catalog}
         self._schedule: list[RoundSpec] = schedule
         self._max_rounds = len(schedule)
@@ -47,6 +73,7 @@ class StoreEnv:
         self._log: list[LogEntry] = []
         self._seq = 0
         self._failed_rounds: list[FailedRound] = []
+        self._shown_orders: dict[int, list[str]] = {}
 
     # ── Round bookkeeping ──────────────────────────────────
     @property
@@ -69,6 +96,19 @@ class StoreEnv:
     @property
     def budget(self) -> float:
         return self._budget
+
+    @property
+    def order(self) -> str:
+        return self._order
+
+    @property
+    def seed(self) -> int | None:
+        return self._seed
+
+    @property
+    def shown_orders(self) -> dict[int, list[str]]:
+        """Presented product_id order per round (last call wins per round)."""
+        return {r: list(ids) for r, ids in self._shown_orders.items()}
 
     @property
     def purchases(self) -> list[PurchaseRecord]:
@@ -147,7 +187,11 @@ class StoreEnv:
 
     # ── Agent tools ────────────────────────────────────────
     def get_products(self, category: str) -> list[ProductView]:
-        """Return products in the given category available in the current round."""
+        """Return products in the given category available in the current round.
+
+        Order follows the presentation mode: schedule insertion order, or a
+        deterministic per-round shuffle derived from (seed, round).
+        """
         if not self._round_open:
             raise RuntimeError("round not open")
         listings = self._current_spec.listings
@@ -169,6 +213,12 @@ class StoreEnv:
                     attributes=dict(spec.attributes),
                 )
             )
+        if self._order == "shuffle":
+            rng = random.Random(f"{self._seed}:{self._round}")
+            rng.shuffle(out)
+        shown = [p.product_id for p in out]
+        self._shown_orders[self._round] = shown
+        self._append(Event.PRODUCTS_SHOWN, {"category": category, "order": shown})
         return out
 
     def validate_purchase(self, product_id: str) -> ValidationResult:

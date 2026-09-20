@@ -180,3 +180,101 @@ def test_event_log_sequence(env):
     assert events == ["round_started", "purchase", "round_closed"]
     seqs = [e.seq for e in env.event_log]
     assert seqs == [1, 2, 3]
+
+
+def test_get_products_logs_products_shown(env):
+    env.begin_round()
+    env.get_products("dairy")
+    events = [e.event.value for e in env.event_log]
+    assert events == ["round_started", "products_shown"]
+    seqs = [e.seq for e in env.event_log]
+    assert seqs == [1, 2]
+
+
+def _three_product_env(**kwargs):
+    from store.engine import StoreEnv
+    from store.models import ProductSpec, RoundSpec, ListingEntry
+    catalog = [
+        ProductSpec(product_id="a", name="Milk", category="dairy", brand="A"),
+        ProductSpec(product_id="b", name="Milk", category="dairy", brand="B"),
+        ProductSpec(product_id="c", name="Milk", category="dairy", brand="C"),
+        ProductSpec(product_id="d", name="Milk", category="dairy", brand="D"),
+        ProductSpec(product_id="e", name="Milk", category="dairy", brand="E"),
+    ]
+    schedule = [RoundSpec(budget=100.0, listings={
+        "a": ListingEntry(available=1, price=10.0),
+        "b": ListingEntry(available=1, price=11.0),
+        "c": ListingEntry(available=1, price=12.0),
+        "d": ListingEntry(available=1, price=13.0),
+        "e": ListingEntry(available=1, price=14.0),
+    })]
+    return StoreEnv(catalog=catalog, schedule=schedule, **kwargs)
+
+
+def test_schedule_order_is_default():
+    env = _three_product_env()
+    env.begin_round()
+    assert [p.product_id for p in env.get_products("dairy")] == ["a", "b", "c", "d", "e"]
+
+
+def test_shuffle_requires_seed():
+    import pytest
+    with pytest.raises(ValueError, match="requires a seed"):
+        _three_product_env(order="shuffle")
+
+
+def test_shuffle_is_deterministic_for_same_seed():
+    env1 = _three_product_env(order="shuffle", seed=42)
+    env1.begin_round()
+    order1 = [p.product_id for p in env1.get_products("dairy")]
+
+    env2 = _three_product_env(order="shuffle", seed=42)
+    env2.begin_round()
+    order2 = [p.product_id for p in env2.get_products("dairy")]
+
+    assert order1 == order2
+    assert sorted(order1) == ["a", "b", "c", "d", "e"]
+
+
+def test_shuffle_differs_across_rounds_with_same_seed():
+    # Collect round-1 vs round-2 orders over several seeds; at least one
+    # seed must give different orders (shuffling actually varies by round).
+    from store.models import ProductSpec, RoundSpec, ListingEntry
+    from store.engine import StoreEnv
+    catalog = [
+        ProductSpec(product_id="a", name="Milk", category="dairy", brand="A"),
+        ProductSpec(product_id="b", name="Milk", category="dairy", brand="B"),
+        ProductSpec(product_id="c", name="Milk", category="dairy", brand="C"),
+        ProductSpec(product_id="d", name="Milk", category="dairy", brand="D"),
+        ProductSpec(product_id="e", name="Milk", category="dairy", brand="E"),
+    ]
+    listings = {
+        "a": ListingEntry(available=1, price=10.0),
+        "b": ListingEntry(available=1, price=11.0),
+        "c": ListingEntry(available=1, price=12.0),
+        "d": ListingEntry(available=1, price=13.0),
+        "e": ListingEntry(available=1, price=14.0),
+    }
+    schedule = [RoundSpec(budget=100.0, listings=dict(listings)) for _ in range(2)]
+    differed = False
+    for seed in range(10):
+        env = StoreEnv(catalog=catalog, schedule=schedule, order="shuffle", seed=seed)
+        env.begin_round()
+        r1 = [p.product_id for p in env.get_products("dairy")]
+        env.close_round()
+        env.begin_round()
+        r2 = [p.product_id for p in env.get_products("dairy")]
+        if r1 != r2:
+            differed = True
+            break
+    assert differed
+
+
+def test_shown_order_logged():
+    env = _three_product_env(order="shuffle", seed=7)
+    env.begin_round()
+    shown = [p.product_id for p in env.get_products("dairy")]
+    assert env.shown_orders[1] == shown
+    events = [e for e in env.event_log if e.event.value == "products_shown"]
+    assert len(events) == 1
+    assert events[0].payload["order"] == shown
