@@ -25,7 +25,7 @@ Key experimental controls:
 
 - **Equal quality** (`quality=0.8` everywhere) and **fictional brands** (Nordvik / Zephyr / Auralis) so choice is driven by price + history, not prior brand knowledge.
 - **Non-binding budget** (`budget=100.0` vs prices ~12–15.75) so switching reflects relative price, not inability to pay.
-- **`temperature=0.7`** (never 0) so the 50 repetitions per experiment actually sample a distribution.
+- **`temperature=0.7`** (never 0) so the repeated trajectories per experiment actually sample a distribution.
 - **Presentation shuffle** (`presentation: {order: shuffle, seed}`) — product display order is deterministically shuffled per round from `seed + (run_index − 1)`, giving a different but reproducible order per trajectory to control position bias.
 
 ## Research questions and experiments
@@ -43,13 +43,19 @@ Seeded by `scripts/seed_rqs.py`:
 
 10 rounds of milk with drifting Nordvik prices. Not part of the analysis; use it (or `smoke_test.py`) to verify the stack before spending API calls.
 
-### E0 — no-history baseline control (RQ1)
+### E0 — no-history baseline controls (RQ1)
 
-`experiments/exp_024_e0_control.py` (`RQ1_E0_control`): single-round trajectories with empty history at strict parity (15.0 vs 15.0) on the same 3-brand Laundry Detergent catalog. Each trajectory contributes exactly one purchase, so run 90 trajectories for ~90 baseline purchases. Healthy result: each brand ≈ ⅓. Run with an explicit count (the `runs` key is informational only):
+Two controls on the same 3-brand Laundry Detergent catalog at strict parity (15.0 vs 15.0), with no discount seeding:
+
+- `experiments/exp_024_e0_control.py` (`RQ1_E0_control`): single-round trajectories with empty history. Each trajectory contributes exactly one purchase, so run 120 trajectories for ~120 baseline purchases. Healthy result: each brand ≈ ⅓.
+- `experiments/exp_025_e0_control_4r.py` (`RQ1_E0_control_4r`): 4 rounds, all at parity. Round 1 is the no-history baseline; rounds 2–4 show how repeat behavior evolves with history but without any price signal. Run 120 trajectories.
 
 ```powershell
-python runner.py experiments/exp_024_e0_control.py 90
+python runner.py experiments/exp_024_e0_control.py 120
+python runner.py experiments/exp_025_e0_control_4r.py 120
 ```
+
+Always pass the count explicitly — the `runs` key inside the files is informational only (see §3).
 
 ### E1 — loyalty formation and decay (RQ1)
 
@@ -76,6 +82,22 @@ Metric: retention on Nordvik in the final round (conditional on having bought it
 - `exp_023_e3_k3_p5.py` (`RQ3_E3_k3_p5`) — Nordvik dish at +5% (15.75 vs 15.0).
 
 Metric: spillover rate — P(pick Nordvik dish in round 4 | seeded on Nordvik laundry).
+
+### Cross-model replication (RQ1/RQ2/RQ3)
+
+Three of the `gpt-5.6-luna` designs are replicated 1:1 on two cheaper models to test whether the effects generalize beyond one LLM. Only `llm.model`, `code`, and the presentation `seed` differ; catalog, schedule, and temperature are identical:
+
+| Base design | `gemini-3.5-flash-lite` | `deepseek-v4.1-flash` |
+|---|---|---|
+| E0 4-round control (`exp_025`, 120 runs) | `exp_026_e0_control_4r_gemini.py` | `exp_027_e0_control_4r_deepseek.py` |
+| E2 k=3 +1% (`exp_016`, 50 runs) | `exp_028_e2_k3_p1_gemini.py` | `exp_029_e2_k3_p1_deepseek.py` |
+| E3 parity spillover (`exp_022`, 50 runs) | `exp_030_e3_k3_parity_gemini.py` | `exp_031_e3_k3_parity_deepseek.py` |
+
+```powershell
+python runner.py experiments/exp_026_e0_control_4r_gemini.py 120
+python runner.py experiments/exp_027_e0_control_4r_deepseek.py 120
+foreach ($f in "exp_028_e2_k3_p1_gemini.py","exp_029_e2_k3_p1_deepseek.py","exp_030_e3_k3_parity_gemini.py","exp_031_e3_k3_parity_deepseek.py") { python runner.py "experiments/$f" }
+```
 
 ## Requirements
 
@@ -119,7 +141,9 @@ python runner.py experiments/exp_002_e2_k1_p5.py
 python runner.py experiments/exp_002_e2_k1_p5.py 50
 ```
 
-The second argument overrides the trajectory count. The `runs` key inside experiment files is documentation only — `runner.py` uses the CLI value (default 50). Duplicate `code` values are rejected, so a finished experiment is never silently overwritten. To re-run a code, delete its rows in dependency order (`purchases → rounds → trajectories → experiments` filtered by `experiments.code`) and run again.
+The second argument overrides the trajectory count. The `runs` key inside experiment files is documentation only — `runner.py` uses the CLI value (default 50). Examples: the E0 controls need `120`, the E2/E3 grids need `50`. Duplicate `code` values are rejected, so a finished experiment is never silently overwritten. To re-run a code, delete its rows in dependency order (`purchases → rounds → trajectories → experiments` filtered by `experiments.code`) and run again.
+
+Failed trajectories are normal in small numbers: if the LLM returns malformed JSON (truncated `PurchaseChoice` or a bare string like `cleaning` instead of `{"category": ...}`), that trajectory aborts and is stored with `status='failed'` plus the parse error in `error_message`. Rounds completed before the failure stay in the DB; the failed round and later rounds are missing. Base all metrics on `status='finished'` trajectories.
 
 ### 4. Run a batch (PowerShell)
 
@@ -139,6 +163,12 @@ E3 spillover pair:
 
 ```powershell
 foreach ($f in "exp_022_e3_k3_parity.py","exp_023_e3_k3_p5.py") { python runner.py "experiments/$f" }
+```
+
+E0 controls (120 trajectories each):
+
+```powershell
+foreach ($f in "exp_024_e0_control.py","exp_025_e0_control_4r.py") { python runner.py "experiments/$f" 120 }
 ```
 
 If a run is interrupted, re-run only the remaining files — completed experiment codes are blocked from re-running.
@@ -176,7 +206,8 @@ python -c "from runner import load_experiment, validate_experiment; e = load_exp
 agent/          LangGraph agent (graph.py, nodes.py, prompts.py, state.py, schemas.py)
 store/          deterministic StoreEnv + Pydantic models (engine.py, models.py)
 db/             SQLAlchemy tables, engine/session factory, persistence (tables.py, base.py, repository.py)
-experiments/    EXPERIMENT definitions (exp_000 test + exp_001 E1 + exp_002–021 E2 + exp_022–023 E3)
+experiments/    EXPERIMENT definitions (exp_000 test, exp_001 E1, exp_002–021 E2 grids,
+                exp_022–023 E3 spillover, exp_024–025 E0 controls, exp_026–031 cross-model)
 orchestrator.py round loop over the agent graph (no DB knowledge)
 runner.py       CLI entry point: validate → snapshot experiment → run N trajectories → persist
 scripts/        seed_rqs.py (seed RQ1–RQ4), smoke_test.py (dry run, no DB)

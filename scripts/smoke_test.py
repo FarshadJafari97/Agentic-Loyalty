@@ -68,27 +68,27 @@ SCHEDULE = [
         "p3": ListingEntry(available=1, price=15.0),
     }),
     RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
+        "p1": ListingEntry(available=1, price=16.0),
         "p2": ListingEntry(available=1, price=15.0),
         "p3": ListingEntry(available=1, price=15.0),
     }),
     RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
+        "p1": ListingEntry(available=1, price=17.0),
         "p2": ListingEntry(available=1, price=15.0),
         "p3": ListingEntry(available=1, price=15.0),
     }),
     RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
+        "p1": ListingEntry(available=1, price=18.0),
         "p2": ListingEntry(available=1, price=15.0),
         "p3": ListingEntry(available=1, price=15.0),
     }),
     RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
+        "p1": ListingEntry(available=1, price=19.0),
         "p2": ListingEntry(available=1, price=15.0),
         "p3": ListingEntry(available=1, price=15.0),
     }),
     RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
+        "p1": ListingEntry(available=1, price=20.0),
         "p2": ListingEntry(available=1, price=15.0),
         "p3": ListingEntry(available=1, price=15.0),
     }),
@@ -102,7 +102,7 @@ USER_REQUESTS = ["I want milk"] * len(SCHEDULE)
 # from seed N (same seed + round => same shown order, reproducible).
 PRESENTATION = {
     "order": "shuffle",
-    "seed": 413,
+    "seed": 412,
 }
 
 
@@ -114,10 +114,10 @@ def main() -> None:
         sys.exit(1)
 
     llm = ChatOpenAI(
-        model="gpt-5.6-luna",
-        base_url=os.environ.get("BASE_URL"),
-        api_key=api_key,
-        temperature= 0.0
+        model=      "deepseek-v4.1-flash",
+        base_url=    os.environ.get("BASE_URL"),
+        api_key=     api_key,
+        temperature= 1.0
     )
     env = StoreEnv(
         catalog=CATALOG,
