@@ -14,8 +14,8 @@ EXPERIMENT = {
     ),
 
     # NOTE: runner.py uses the CLI count (default 50). Run with:
-    #   python runner.py experiments/exp_024_e0_control.py 90
-    "runs": 90,
+    #   python runner.py experiments/exp_024_e0_control.py 120
+    "runs": 120,
 
     "llm": {
         "model": "gpt-5.6-luna",

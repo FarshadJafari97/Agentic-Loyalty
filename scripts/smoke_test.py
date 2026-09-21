@@ -43,53 +43,53 @@ CATALOG = [
 # ── Schedule: 10 rounds with price changes ────────────────
 SCHEDULE = [
     RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=12.0),
-        "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=18.0),
-    }),
-    RoundSpec(budget=100.0, listings={
         "p1": ListingEntry(available=1, price=15.0),
         "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=18.0),
-    }),
-    RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
-        "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=18.0),
-    }),
-    RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
-        "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=18.0),
-    }),
-    RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
-        "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=18.0),
-    }),
-    RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
-        "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=18.0),
-    }),
-    RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
-        "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=18.0),
-    }),
-    RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
-        "p2": ListingEntry(available=1, price=15.0),
-        "p3": ListingEntry(available=1, price=18.0),
-    }),
-    RoundSpec(budget=100.0, listings={
-        "p1": ListingEntry(available=1, price=15.0),
-        "p2": ListingEntry(available=1, price=14.9),
         "p3": ListingEntry(available=1, price=15.0),
     }),
     RoundSpec(budget=100.0, listings={
         "p1": ListingEntry(available=1, price=15.0),
-        "p2": ListingEntry(available=1, price=14.9),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=15.0),
+    }),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=15.0),
+    }),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=15.0),
+    }),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=15.0),
+    }),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=15.0),
+    }),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=15.0),
+    }),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=15.0),
+    }),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
+        "p3": ListingEntry(available=1, price=15.0),
+    }),
+    RoundSpec(budget=100.0, listings={
+        "p1": ListingEntry(available=1, price=15.0),
+        "p2": ListingEntry(available=1, price=15.0),
         "p3": ListingEntry(available=1, price=15.0),
     }),
 ]
@@ -102,7 +102,7 @@ USER_REQUESTS = ["I want milk"] * len(SCHEDULE)
 # from seed N (same seed + round => same shown order, reproducible).
 PRESENTATION = {
     "order": "shuffle",
-    "seed": 42,
+    "seed": 413,
 }
 
 
