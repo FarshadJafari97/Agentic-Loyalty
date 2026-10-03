@@ -1,0 +1,7 @@
+metric,test,statistic,p_value,note
+E0 no-history: P(Nordvik),MC permutation chi-square (3 models),0.024603608529250955,1.0,
+E0-4R: P(repeat previous brand),--,,,pooled transitions are clustered; see tab05 bootstrap CIs
+E1: P(Nordvik) in R2 (first parity round),MC permutation chi-square (3 models),0.0,1.0,
+E1: Nordvik in all six parity rounds,MC permutation chi-square (3 models),0.0,1.0,
+"E2 k=3, +1%: retention | fully seeded",MC permutation chi-square (3 models),4.166666666666667,0.16378362163783622,
+E3 parity: spillover | fully seeded,MC permutation chi-square (3 models),0.0,1.0,

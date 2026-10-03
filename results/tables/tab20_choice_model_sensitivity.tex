@@ -1,0 +1,21 @@
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Sensitivity of choice-model coefficients and the history-equivalent premium to the ridge penalty λ.}
+\label{tab:tab20_choice_model_sensitivity}
+\begin{tabular}{lrrrrrrr}
+\toprule
+model & ridge\_lambda & Price above cheapest (per 1\%) & Bought last round & × new category (spillover) & Brand: Zephyr (vs Nordvik) & Brand: Auralis (vs Nordvik) & history\_equiv\_premium\_pct \\
+\midrule
+GPT-5.6-Luna & 0.100 & -5.004 & 2.913 & 2.703 & -0.388 & -0.206 & 0.582 \\
+GPT-5.6-Luna & 1.000 & -4.640 & 2.817 & 1.258 & -0.369 & -0.188 & 0.607 \\
+GPT-5.6-Luna & 10.000 & -3.122 & 2.281 & 0.476 & -0.279 & -0.106 & 0.731 \\
+Gemini-3.5-Flash-Lite & 0.100 & -2.955 & 0.268 & 4.168 & -1.001 & -1.030 & 0.091 \\
+Gemini-3.5-Flash-Lite & 1.000 & -2.486 & 0.270 & 2.389 & -0.991 & -1.020 & 0.109 \\
+Gemini-3.5-Flash-Lite & 10.000 & -1.228 & 0.278 & 0.940 & -0.901 & -0.927 & 0.227 \\
+DeepSeek-V4.1-Flash & 0.100 & -7.004 & 3.182 & 2.516 & -0.236 & -0.288 & 0.454 \\
+DeepSeek-V4.1-Flash & 1.000 & -4.837 & 3.055 & 1.137 & -0.214 & -0.269 & 0.632 \\
+DeepSeek-V4.1-Flash & 10.000 & -2.211 & 2.481 & 0.411 & -0.158 & -0.224 & 1.122 \\
+\bottomrule
+\end{tabular}
+\end{table}

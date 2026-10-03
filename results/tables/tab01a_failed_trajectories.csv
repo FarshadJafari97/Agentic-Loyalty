@@ -1,0 +1,4 @@
+experiment_code,run_index,error_type
+RQ1_E0_control_4r_deepseek,27,CategoryChoice: bare string instead of JSON
+RQ3_E3_k3_parity_deepseek,28,CategoryChoice: bare string instead of JSON
+RQ3_E3_k3_parity_gemini,6,PurchaseChoice: truncated JSON

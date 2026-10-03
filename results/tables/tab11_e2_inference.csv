@@ -1,0 +1,6 @@
+analysis,term,estimate,odds_ratio,ci_low,ci_high,p_value,note
+"Logit retained ~ k + p (GPT grid, fully seeded)",k,-0.12029941346713231,0.8866549205456719,0.501633961159026,1.5671924331268057,0.6789072077354303,converged
+"Logit retained ~ k + p (GPT grid, fully seeded)",p,-0.25870932967662164,0.7720474016999309,0.4271141817969437,1.395545303515557,0.3917048150593142,converged
+Cochran-Armitage trend in premium p (pooled k),p,-0.8686352301040218,,,,0.385046678479422,
+Cochran-Armitage trend in seeding depth k (pooled p),k,-0.4152870712384365,,,,0.6779317645958609,
+Permutation homogeneity across 20 cells,cell,20.79141515761234,,,,0.5558444155584441,

@@ -1,0 +1,30 @@
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Cross-model comparison of headline metrics (Wilson / Jeffreys 95\% CIs; E0-4R repeat uses a cluster bootstrap CI over trajectories).}
+\label{tab:tab16_cross_model_summary}
+\begin{tabular}{llrrrrrrr}
+\toprule
+metric & model & x & n & rate & wilson\_low & wilson\_high & jeffreys\_low & jeffreys\_high \\
+\midrule
+E0 no-history: P(Nordvik) & GPT-5.6-Luna & 42 & 120 & 0.350 & 0.271 & 0.439 & 0.269 & 0.438 \\
+E0-4R: P(repeat previous brand) & GPT-5.6-Luna & -- & 360 & 0.864 & 0.803 & 0.922 & -- & -- \\
+E1: P(Nordvik) in R2 (first parity round) & GPT-5.6-Luna & 50 & 50 & 1.000 & 0.929 & 1.000 & 0.951 & 1.000 \\
+E1: Nordvik in all six parity rounds & GPT-5.6-Luna & 50 & 50 & 1.000 & 0.929 & 1.000 & 0.951 & 1.000 \\
+E2 k=3, +1\%: retention | fully seeded & GPT-5.6-Luna & 2 & 50 & 0.040 & 0.011 & 0.135 & 0.008 & 0.122 \\
+E3 parity: spillover | fully seeded & GPT-5.6-Luna & 50 & 50 & 1.000 & 0.929 & 1.000 & 0.951 & 1.000 \\
+E0 no-history: P(Nordvik) & Gemini-3.5-Flash-Lite & 41 & 120 & 0.342 & 0.263 & 0.430 & 0.261 & 0.429 \\
+E0-4R: P(repeat previous brand) & Gemini-3.5-Flash-Lite & -- & 357 & 0.109 & 0.059 & 0.165 & -- & -- \\
+E1: P(Nordvik) in R2 (first parity round) & Gemini-3.5-Flash-Lite & 50 & 50 & 1.000 & 0.929 & 1.000 & 0.951 & 1.000 \\
+E1: Nordvik in all six parity rounds & Gemini-3.5-Flash-Lite & 50 & 50 & 1.000 & 0.929 & 1.000 & 0.951 & 1.000 \\
+E2 k=3, +1\%: retention | fully seeded & Gemini-3.5-Flash-Lite & 4 & 50 & 0.080 & 0.032 & 0.188 & 0.028 & 0.179 \\
+E3 parity: spillover | fully seeded & Gemini-3.5-Flash-Lite & 49 & 49 & 1.000 & 0.927 & 1.000 & 0.950 & 1.000 \\
+E0 no-history: P(Nordvik) & DeepSeek-V4.1-Flash & 41 & 120 & 0.342 & 0.263 & 0.430 & 0.261 & 0.429 \\
+E0-4R: P(repeat previous brand) & DeepSeek-V4.1-Flash & -- & 357 & 0.874 & 0.807 & 0.925 & -- & -- \\
+E1: P(Nordvik) in R2 (first parity round) & DeepSeek-V4.1-Flash & 50 & 50 & 1.000 & 0.929 & 1.000 & 0.951 & 1.000 \\
+E1: Nordvik in all six parity rounds & DeepSeek-V4.1-Flash & 50 & 50 & 1.000 & 0.929 & 1.000 & 0.951 & 1.000 \\
+E2 k=3, +1\%: retention | fully seeded & DeepSeek-V4.1-Flash & 0 & 50 & 0.000 & 0.000 & 0.071 & 0.000 & 0.049 \\
+E3 parity: spillover | fully seeded & DeepSeek-V4.1-Flash & 49 & 49 & 1.000 & 0.927 & 1.000 & 0.950 & 1.000 \\
+\bottomrule
+\end{tabular}
+\end{table}

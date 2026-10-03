@@ -1,0 +1,30 @@
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{E0 4-round parity control: repeat probabilities by round transition, stickiness and full stay rates (Wilson / Jeffreys 95\% CIs). Chance level for a repeat is 1/3.}
+\label{tab:tab04_e0_4r_repeat_dynamics}
+\begin{tabular}{llrrrrrrr}
+\toprule
+model & metric & x & n & rate & wilson\_low & wilson\_high & jeffreys\_low & jeffreys\_high \\
+\midrule
+GPT-5.6-Luna & repeat R1->R2 & 103 & 120 & 0.858 & 0.785 & 0.910 & 0.788 & 0.912 \\
+GPT-5.6-Luna & repeat R2->R3 & 102 & 120 & 0.850 & 0.775 & 0.903 & 0.778 & 0.905 \\
+GPT-5.6-Luna & repeat R3->R4 & 106 & 120 & 0.883 & 0.814 & 0.929 & 0.817 & 0.932 \\
+GPT-5.6-Luna & stickiness R4 = R1 & 110 & 120 & 0.917 & 0.853 & 0.954 & 0.857 & 0.956 \\
+GPT-5.6-Luna & stayed with R1 brand all 4 rounds & 102 & 120 & 0.850 & 0.775 & 0.903 & 0.778 & 0.905 \\
+GPT-5.6-Luna & R1 = Nordvik & 43 & 120 & 0.358 & 0.278 & 0.447 & 0.277 & 0.447 \\
+Gemini-3.5-Flash-Lite & repeat R1->R2 & 12 & 119 & 0.101 & 0.059 & 0.168 & 0.056 & 0.164 \\
+Gemini-3.5-Flash-Lite & repeat R2->R3 & 12 & 119 & 0.101 & 0.059 & 0.168 & 0.056 & 0.164 \\
+Gemini-3.5-Flash-Lite & repeat R3->R4 & 15 & 119 & 0.126 & 0.078 & 0.198 & 0.076 & 0.194 \\
+Gemini-3.5-Flash-Lite & stickiness R4 = R1 & 100 & 119 & 0.840 & 0.764 & 0.895 & 0.767 & 0.898 \\
+Gemini-3.5-Flash-Lite & stayed with R1 brand all 4 rounds & 12 & 119 & 0.101 & 0.059 & 0.168 & 0.056 & 0.164 \\
+Gemini-3.5-Flash-Lite & R1 = Nordvik & 42 & 119 & 0.353 & 0.273 & 0.442 & 0.271 & 0.442 \\
+DeepSeek-V4.1-Flash & repeat R1->R2 & 104 & 119 & 0.874 & 0.802 & 0.922 & 0.806 & 0.924 \\
+DeepSeek-V4.1-Flash & repeat R2->R3 & 104 & 119 & 0.874 & 0.802 & 0.922 & 0.806 & 0.924 \\
+DeepSeek-V4.1-Flash & repeat R3->R4 & 104 & 119 & 0.874 & 0.802 & 0.922 & 0.806 & 0.924 \\
+DeepSeek-V4.1-Flash & stickiness R4 = R1 & 119 & 119 & 1.000 & 0.969 & 1.000 & 0.979 & 1.000 \\
+DeepSeek-V4.1-Flash & stayed with R1 brand all 4 rounds & 104 & 119 & 0.874 & 0.802 & 0.922 & 0.806 & 0.924 \\
+DeepSeek-V4.1-Flash & R1 = Nordvik & 40 & 119 & 0.336 & 0.258 & 0.425 & 0.256 & 0.424 \\
+\bottomrule
+\end{tabular}
+\end{table}

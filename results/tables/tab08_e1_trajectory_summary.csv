@@ -1,0 +1,4 @@
+model,n_finished,seed_takeup,n_seeded,mean_nordvik_parity_rounds,never_switched,median_first_switch_round
+GPT-5.6-Luna,50,1.0,50,6.0,1.0,
+Gemini-3.5-Flash-Lite,50,1.0,50,6.0,1.0,
+DeepSeek-V4.1-Flash,50,1.0,50,6.0,1.0,
