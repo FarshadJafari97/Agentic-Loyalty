@@ -139,7 +139,7 @@ ENTRY → extract_category → fetch_products → decide → commit → finalize
 
 ---
 
-## 5. Experiment catalogue — all 32 files
+## 5. Experiment catalogue — all 34 files
 
 Global: `budget=100.0`, `quality=0.8`, brands Nordvik/Zephyr/Auralis, `temp=0.7` (except `exp_000`: 1.0), retries `2/3`.
 
@@ -168,9 +168,17 @@ python runner.py experiments/exp_025_e0_control_4r.py 120
 
 | File | code | Design | Runs | Seed |
 |------|------|--------|------|------|
-| `exp_001_e1_k1.py` | `RQ1_E1_k1_seeding` | 7R: R1 Nordvik 20% off (`12/15/15`) + R2–7 parity (`15/15/15`) | 50 | 101 |
+| `exp_001_e1_k1.py` | `RQ1_E1_k1_seeding` | 7R: R1 Nordvik 20% off (`12/15/15`) + R2–7 parity (`15/15/15`), `gpt-5.6-luna` | 50 | 101 |
+| `exp_032_e1_k1_gemini.py` | `RQ1_E1_k1_seeding_gemini` | 1:1 replica of `exp_001` on `gemini-3.5-flash-lite` | 50 | 230 |
+| `exp_033_e1_k1_deepseek.py` | `RQ1_E1_k1_seeding_deepseek` | 1:1 replica of `exp_001` on `deepseek-v4.1-flash` | 50 | 231 |
 
 Metric: repeat-purchase rate of Nordvik in R2–R7 after discount ends.
+
+```powershell
+python runner.py experiments/exp_001_e1_k1.py
+python runner.py experiments/exp_032_e1_k1_gemini.py
+python runner.py experiments/exp_033_e1_k1_deepseek.py
+```
 
 ### 5.4 E2 — price-premium tolerance grid (RQ2) — 20 cells: k∈{1,2,3,5} × p∈{+1%,+2%,+3%,+4%,+5%}
 
@@ -207,19 +215,125 @@ Requests: `["…detergent"]*3 + ["I want dish soap"]`. Metric: spillover `P(pick
 foreach ($f in "exp_022_e3_k3_parity.py","exp_023_e3_k3_p5.py") { python runner.py "experiments/$f" }
 ```
 
-### 5.6 Cross-model replication (RQ1/RQ2/RQ3) — 6 files, 1:1 except `llm.model`, `code`, seed
+### 5.6 Cross-model replication (RQ1/RQ2/RQ3) — 8 files, 1:1 except `llm.model`, `code`, seed
 
 | Base (`gpt-5.6-luna`) | `gemini-3.5-flash-lite` | `deepseek-v4.1-flash` |
 |---|---|---|
 | E0 4R `exp_025` (120 runs) | `exp_026_e0_control_4r_gemini.py` (s224, 120) | `exp_027_e0_control_4r_deepseek.py` (s225, 120) |
+| E1 k=1 `exp_001` (50) | `exp_032_e1_k1_gemini.py` (s230, 50) | `exp_033_e1_k1_deepseek.py` (s231, 50) |
 | E2 k=3+1% `exp_016` (50) | `exp_028_e2_k3_p1_gemini.py` (s226, 50) | `exp_029_e2_k3_p1_deepseek.py` (s227, 50) |
-| E3 parity `exp_022` (50) | `exp_030_e3_k3_parity_gemini.py` (s228, 50) | `exp_031_e3_k3_parity_deepseek.py` (s231→229, 50) |
+| E3 parity `exp_022` (50) | `exp_030_e3_k3_parity_gemini.py` (s228, 50) | `exp_031_e3_k3_parity_deepseek.py` (s229, 50) |
 
 ```powershell
 python runner.py experiments/exp_026_e0_control_4r_gemini.py 120
 python runner.py experiments/exp_027_e0_control_4r_deepseek.py 120
-foreach ($f in "exp_028_e2_k3_p1_gemini.py","exp_029_e2_k3_p1_deepseek.py","exp_030_e3_k3_parity_gemini.py","exp_031_e3_k3_parity_deepseek.py") { python runner.py "experiments/$f" }
+foreach ($f in "exp_028_e2_k3_p1_gemini.py","exp_029_e2_k3_p1_deepseek.py","exp_030_e3_k3_parity_gemini.py","exp_031_e3_k3_parity_deepseek.py","exp_032_e1_k1_gemini.py","exp_033_e1_k1_deepseek.py") { python runner.py "experiments/$f" }
 ```
+
+### 5.7 Per-experiment detail sheets (all 34)
+
+How to read each sheet: **Why** = hypothesis; **Sees** = what the agent observes
+that round (prices, availability, request, history); **Judge** = metric +
+interpretation. Catalog is Laundry Detergent/`cleaning`
+(`p_nordvik/p_zephyr/p_auralis`, q0.8) unless stated otherwise.
+
+**`exp_000_test.py` — `RQ1_Test_10rounds` (RQ1, pilot, NOT for analysis).**
+`gpt-5.6-luna`/1.0, Milk/`dairy` (`m_*`), fixed order, 10R drifting Nordvik
+14→21 (R1–3 14/15/18, R4 15/15/18, R5 16/15/18, R6 17/15/18, R7 18/15/18,
+R8 19/15/18, R9 20/15/18, R10 21/16/14), `["I want milk"]*10`. Why: verify
+stack before spending API calls. Judge: trace completes, no systemic failures.
+
+**`exp_024_e0_control.py` — `RQ1_E0_control` (RQ1, E0).**
+`gpt-5.6-luna`/0.7, 120 runs, seed 100, 1R parity 15/15/15,
+`["I want laundry detergent"]`. Why: no-history baseline — no discount, no
+history, choice should be ~1/3 per brand. Sees: one parity offer, empty
+history. Judge: brand shares R1; deviations signal position/brand bias.
+
+**`exp_025_e0_control_4r.py` — `RQ1_E0_control_4r` (RQ1, E0).**
+Same as 024 but 4R all-parity, seed 102, 120 runs. Why: R1 repeats baseline;
+R2–R4 show repeat dynamics from history alone (no price signal). Judge:
+`P(repeat)`, stickiness `P(R4=R1)`; reference for E1 decay.
+
+**`exp_001_e1_k1.py` — `RQ1_E1_k1_seeding` (RQ1, E1).**
+`gpt-5.6-luna`/0.7, 50 runs, seed 101, 7R: R1 12/15/15 then R2–R7 15/15/15.
+Why: does one 20%-off exposure create persistent repeats at parity, and how
+fast does it decay? Sees: R1 cheap Nordvik, then 6 parity rounds with growing
+history. Judge: take-up `P(R1=Nordvik)` then decay `P(RN=Nordvik|seeded)` N=2..7.
+
+**`exp_032_e1_k1_gemini.py` — `RQ1_E1_k1_seeding_gemini` (RQ1, E1 replica).**
+1:1 copy of `exp_001` on `gemini-3.5-flash-lite`, seed 230, 50 runs. Why: does
+E1 loyalty generalise beyond `gpt-5.6-luna`? Judge: same decay curve, compare models.
+
+**`exp_033_e1_k1_deepseek.py` — `RQ1_E1_k1_seeding_deepseek` (RQ1, E1 replica).**
+1:1 copy of `exp_001` on `deepseek-v4.1-flash`, seed 231, 50 runs. Why/Judge:
+as `exp_032` for deepseek.
+
+**E2 k=1 block (2R: R1 12/15/15, R2 premium; 50 runs each). Tests whether a
+single discount buys any tolerance to an immediate premium.**
+- **`exp_006_e2_k1_p1.py` — `RQ2_E2_k1_p1`.** R2 15.15 (+1%), seed 206.
+- **`exp_005_e2_k1_p2.py` — `RQ2_E2_k1_p2`.** R2 15.30 (+2%), seed 205.
+- **`exp_004_e2_k1_p3.py` — `RQ2_E2_k1_p3`.** R2 15.45 (+3%), seed 204.
+- **`exp_003_e2_k1_p4.py` — `RQ2_E2_k1_p4`.** R2 15.60 (+4%), seed 203.
+- **`exp_002_e2_k1_p5.py` — `RQ2_E2_k1_p5`.** R2 15.75 (+5%), seed 202.
+Metric (all): `P(R2=Nordvik | R1=Nordvik)` — bottom row of threshold curve.
+
+**E2 k=2 block (3R: R1–R2 12/15/15, R3 premium; 50 runs each). Tests whether
+two seeding rounds deepen tolerance.**
+- **`exp_011_e2_k2_p1.py` — `RQ2_E2_k2_p1`.** R3 15.15, seed 211.
+- **`exp_010_e2_k2_p2.py` — `RQ2_E2_k2_p2`.** R3 15.30, seed 210.
+- **`exp_009_e2_k2_p3.py` — `RQ2_E2_k2_p3`.** R3 15.45, seed 209.
+- **`exp_008_e2_k2_p4.py` — `RQ2_E2_k2_p4`.** R3 15.60, seed 208.
+- **`exp_007_e2_k2_p5.py` — `RQ2_E2_k2_p5`.** R3 15.75, seed 207.
+Metric: `P(R3=Nordvik | R1–R2 Nordvik)`.
+
+**E2 k=3 block (4R: R1–R3 12/15/15, R4 premium; 50 runs each). Core of grid —
+moderate habit vs graded shocks.**
+- **`exp_016_e2_k3_p1.py` — `RQ2_E2_k3_p1`.** R4 15.15, seed 216. Base for `exp_028/029`.
+- **`exp_015_e2_k3_p2.py` — `RQ2_E2_k3_p2`.** R4 15.30, seed 215.
+- **`exp_014_e2_k3_p3.py` — `RQ2_E2_k3_p3`.** R4 15.45, seed 214.
+- **`exp_013_e2_k3_p4.py` — `RQ2_E2_k3_p4`.** R4 15.60, seed 213.
+- **`exp_012_e2_k3_p5.py` — `RQ2_E2_k3_p5`.** R4 15.75, seed 212.
+Metric: `P(R4=Nordvik | R1–R3 Nordvik)`.
+
+**E2 k=5 block (6R: R1–R5 12/15/15, R6 premium; 50 runs each). Tests whether
+deep habit survives the same shocks.**
+- **`exp_021_e2_k5_p1.py` — `RQ2_E2_k5_p1`.** R6 15.15, seed 221.
+- **`exp_020_e2_k5_p2.py` — `RQ2_E2_k5_p2`.** R6 15.30, seed 220.
+- **`exp_019_e2_k5_p3.py` — `RQ2_E2_k5_p3`.** R6 15.45, seed 219.
+- **`exp_018_e2_k5_p4.py` — `RQ2_E2_k5_p4`.** R6 15.60, seed 218.
+- **`exp_017_e2_k5_p5.py` — `RQ2_E2_k5_p5`.** R6 15.75, seed 217.
+Metric: `P(R6=Nordvik | R1–R5 Nordvik)` — top row of threshold curve.
+
+**`exp_022_e3_k3_parity.py` — `RQ3_E3_k3_parity` (RQ3, spillover).**
+`gpt-5.6-luna`/0.7, 50 runs, seed 222, 6-product catalog (`ld_*/ds_*`,
+`laundry`/`dish`). R1–R3 laundry-only 12/15/15 (dish unavailable); R4
+dish-only parity 15/15/15. Requests detergent×3 then dish soap. Why: does
+laundry loyalty spill to unexperienced same-brand dish at equal price? Judge:
+`P(R4=Nordvik dish | seeded Nordvik laundry)`.
+
+**`exp_023_e3_k3_p5.py` — `RQ3_E3_k3_p5` (RQ3, spillover + premium).**
+As `exp_022` but R4 dish 15.75/15/15, seed 223. Why: does umbrella survive +5%?
+Judge: same spillover rate; parity vs +5% gap.
+
+**`exp_026_e0_control_4r_gemini.py` — `RQ1_E0_control_4r_gemini`.**
+1:1 of `exp_025` on `gemini-3.5-flash-lite`, seed 224, 120 runs. Why: model
+baseline for repeats without price. Judge: shares, repeat rates.
+
+**`exp_027_e0_control_4r_deepseek.py` — `RQ1_E0_control_4r_deepseek`.**
+As above on `deepseek-v4.1-flash`, seed 225, 120 runs.
+
+**`exp_028_e2_k3_p1_gemini.py` — `RQ2_E2_k3_p1_gemini`.**
+1:1 of `exp_016` (k=3,+1%) on gemini, seed 226, 50 runs. Why: cheapest shock
+after moderate habit — most sensitive probe. Judge: conditional retention.
+
+**`exp_029_e2_k3_p1_deepseek.py` — `RQ2_E2_k3_p1_deepseek`.**
+As above on deepseek, seed 227, 50 runs.
+
+**`exp_030_e3_k3_parity_gemini.py` — `RQ3_E3_k3_parity_gemini`.**
+1:1 of `exp_022` on gemini, seed 228, 50 runs. Judge: conditional spillover.
+
+**`exp_031_e3_k3_parity_deepseek.py` — `RQ3_E3_k3_parity_deepseek`.**
+1:1 of `exp_022` on deepseek, seed 229, 50 runs. Judge: conditional spillover.
 
 ---
 
@@ -261,8 +375,8 @@ Requires: Python 3.10+, Postgres, OpenAI-compatible chat API. Install deps per l
 agent/          graph.py, nodes.py, prompts.py, state.py, schemas.py (LangGraph agent)
 store/          engine.py (StoreEnv), models.py (Pydantic specs)
 db/             tables.py (5 tables), base.py (engine/factory), repository.py (CRUD)
-experiments/    exp_000 (pilot), exp_001 (E1), exp_002–021 (E2 grid), exp_022–023 (E3),
-                exp_024–025 (E0), exp_026–031 (cross-model)
+experiments/    exp_000 (pilot), exp_001/032/033 (E1), exp_002–021 (E2 grid), exp_022–023 (E3),
+                exp_024–025 (E0), exp_026–031 (cross-model E0/E2/E3)
 orchestrator.py round loop (no DB)
 runner.py       CLI: validate → snapshot → N trajectories → persist
 scripts/        seed_rqs.py, smoke_test.py, Untitled-1.ipynb (scratch)
@@ -288,9 +402,9 @@ tests/          test_env.py, test_graph.py, conftest.py
 ## 9. Reproducibility notes
 
 - Each `experiments` row stores full snapshot (`catalog_json, schedule_json, user_requests, allowed_categories, llm_config, agent_config+presentation`) — DB alone suffices to reconstruct design.
-- Presentation seed per file unique (100,101,102,202–229); per-trajectory order = `seed + run_index - 1`, logged in `StoreEnv.event_log` (`PRODUCTS_SHOWN`) and `shown_orders` (smoke test prints; runner does not persist shown order — recover via seed+round formula if needed).
+- Presentation seed per file unique (100,101,102,202–231); per-trajectory order = `seed + run_index - 1`, logged in `StoreEnv.event_log` (`PRODUCTS_SHOWN`) and `shown_orders` (smoke test prints; runner does not persist shown order — recover via seed+round formula if needed).
 - Duplicate `code` rejected — finished experiments immutable unless rows deleted.
 
 ---
 
-*Generated from full repo read (README, runner, orchestrator, agent/*, store/*, db/*, scripts/*, tests/*, all 32 experiments). For design rationale see `README.md:1-215`; for execution semantics see `runner.py:1-303`, `orchestrator.py:1-110`, `store/engine.py`, `agent/graph.py`.*
+*Generated from full repo read (README, runner, orchestrator, agent/*, store/*, db/*, scripts/*, tests/*, all 34 experiments). For design rationale see `README.md:1-215`; for execution semantics see `runner.py:1-303`, `orchestrator.py:1-110`, `store/engine.py`, `agent/graph.py`.*
