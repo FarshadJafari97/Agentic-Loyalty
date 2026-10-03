@@ -139,7 +139,7 @@ ENTRY → extract_category → fetch_products → decide → commit → finalize
 
 ---
 
-## 5. Experiment catalogue — all 34 files
+## 5. Experiment catalogue — all 36 files
 
 Global: `budget=100.0`, `quality=0.8`, brands Nordvik/Zephyr/Auralis, `temp=0.7` (except `exp_000`: 1.0), retries `2/3`.
 
@@ -157,11 +157,15 @@ Same 3-brand Laundry Detergent/cleaning catalog (`p_nordvik/p_zephyr/p_auralis`)
 | File | code | Rounds | Runs | Seed | Purpose |
 |------|------|--------|------|------|---------|
 | `exp_024_e0_control.py` | `RQ1_E0_control` | 1R parity | 120 | 100 | Single-shot no-history baseline; expect ~⅓ each brand |
+| `exp_034_e0_control_gemini.py` | `RQ1_E0_control_gemini` | 1R parity, `gemini-3.5-flash-lite` | 120 | 232 | 1:1 replica of `exp_024` on gemini |
+| `exp_035_e0_control_deepseek.py` | `RQ1_E0_control_deepseek` | 1R parity, `deepseek-v4.1-flash` | 120 | 233 | 1:1 replica of `exp_024` on deepseek |
 | `exp_025_e0_control_4r.py` | `RQ1_E0_control_4r` | 4R all parity | 120 | 102 | R1 = baseline; R2–4 = repeat dynamics without price signal |
 
 ```powershell
 python runner.py experiments/exp_024_e0_control.py 120
 python runner.py experiments/exp_025_e0_control_4r.py 120
+python runner.py experiments/exp_034_e0_control_gemini.py 120
+python runner.py experiments/exp_035_e0_control_deepseek.py 120
 ```
 
 ### 5.3 E1 — loyalty formation/decay (RQ1)
@@ -215,10 +219,11 @@ Requests: `["…detergent"]*3 + ["I want dish soap"]`. Metric: spillover `P(pick
 foreach ($f in "exp_022_e3_k3_parity.py","exp_023_e3_k3_p5.py") { python runner.py "experiments/$f" }
 ```
 
-### 5.6 Cross-model replication (RQ1/RQ2/RQ3) — 8 files, 1:1 except `llm.model`, `code`, seed
+### 5.6 Cross-model replication (RQ1/RQ2/RQ3) — 10 files, 1:1 except `llm.model`, `code`, seed
 
 | Base (`gpt-5.6-luna`) | `gemini-3.5-flash-lite` | `deepseek-v4.1-flash` |
 |---|---|---|
+| E0 1R `exp_024` (120 runs) | `exp_034_e0_control_gemini.py` (s232, 120) | `exp_035_e0_control_deepseek.py` (s233, 120) |
 | E0 4R `exp_025` (120 runs) | `exp_026_e0_control_4r_gemini.py` (s224, 120) | `exp_027_e0_control_4r_deepseek.py` (s225, 120) |
 | E1 k=1 `exp_001` (50) | `exp_032_e1_k1_gemini.py` (s230, 50) | `exp_033_e1_k1_deepseek.py` (s231, 50) |
 | E2 k=3+1% `exp_016` (50) | `exp_028_e2_k3_p1_gemini.py` (s226, 50) | `exp_029_e2_k3_p1_deepseek.py` (s227, 50) |
@@ -227,10 +232,12 @@ foreach ($f in "exp_022_e3_k3_parity.py","exp_023_e3_k3_p5.py") { python runner.
 ```powershell
 python runner.py experiments/exp_026_e0_control_4r_gemini.py 120
 python runner.py experiments/exp_027_e0_control_4r_deepseek.py 120
+python runner.py experiments/exp_034_e0_control_gemini.py 120
+python runner.py experiments/exp_035_e0_control_deepseek.py 120
 foreach ($f in "exp_028_e2_k3_p1_gemini.py","exp_029_e2_k3_p1_deepseek.py","exp_030_e3_k3_parity_gemini.py","exp_031_e3_k3_parity_deepseek.py","exp_032_e1_k1_gemini.py","exp_033_e1_k1_deepseek.py") { python runner.py "experiments/$f" }
 ```
 
-### 5.7 Per-experiment detail sheets (all 34)
+### 5.7 Per-experiment detail sheets (all 36)
 
 How to read each sheet: **Why** = hypothesis; **Sees** = what the agent observes
 that round (prices, availability, request, history); **Judge** = metric +
@@ -335,6 +342,15 @@ As above on deepseek, seed 227, 50 runs.
 **`exp_031_e3_k3_parity_deepseek.py` — `RQ3_E3_k3_parity_deepseek`.**
 1:1 of `exp_022` on deepseek, seed 229, 50 runs. Judge: conditional spillover.
 
+**`exp_034_e0_control_gemini.py` — `RQ1_E0_control_gemini` (RQ1, E0 replica).**
+1:1 copy of `exp_024` (1R parity 15/15/15) on `gemini-3.5-flash-lite`, seed 232,
+120 runs. Why: no-history brand baseline per model — required before comparing
+E1/E2/E3 cross-model effects. Judge: brand shares ≈1/3 each; deviations signal bias.
+
+**`exp_035_e0_control_deepseek.py` — `RQ1_E0_control_deepseek` (RQ1, E0 replica).**
+As above on `deepseek-v4.1-flash`, seed 233, 120 runs. Why/Judge: as `exp_034`
+for deepseek.
+
 ---
 
 ## 6. Metrics cheat-sheet
@@ -376,7 +392,7 @@ agent/          graph.py, nodes.py, prompts.py, state.py, schemas.py (LangGraph 
 store/          engine.py (StoreEnv), models.py (Pydantic specs)
 db/             tables.py (5 tables), base.py (engine/factory), repository.py (CRUD)
 experiments/    exp_000 (pilot), exp_001/032/033 (E1), exp_002–021 (E2 grid), exp_022–023 (E3),
-                exp_024–025 (E0), exp_026–031 (cross-model E0/E2/E3)
+                exp_024–025 (E0), exp_026–035 (cross-model E0/E1/E2/E3)
 orchestrator.py round loop (no DB)
 runner.py       CLI: validate → snapshot → N trajectories → persist
 scripts/        seed_rqs.py, smoke_test.py, Untitled-1.ipynb (scratch)
@@ -402,9 +418,9 @@ tests/          test_env.py, test_graph.py, conftest.py
 ## 9. Reproducibility notes
 
 - Each `experiments` row stores full snapshot (`catalog_json, schedule_json, user_requests, allowed_categories, llm_config, agent_config+presentation`) — DB alone suffices to reconstruct design.
-- Presentation seed per file unique (100,101,102,202–231); per-trajectory order = `seed + run_index - 1`, logged in `StoreEnv.event_log` (`PRODUCTS_SHOWN`) and `shown_orders` (smoke test prints; runner does not persist shown order — recover via seed+round formula if needed).
+- Presentation seed per file unique (100,101,102,202–233); per-trajectory order = `seed + run_index - 1`, logged in `StoreEnv.event_log` (`PRODUCTS_SHOWN`) and `shown_orders` (smoke test prints; runner does not persist shown order — recover via seed+round formula if needed).
 - Duplicate `code` rejected — finished experiments immutable unless rows deleted.
 
 ---
 
-*Generated from full repo read (README, runner, orchestrator, agent/*, store/*, db/*, scripts/*, tests/*, all 34 experiments). For design rationale see `README.md:1-215`; for execution semantics see `runner.py:1-303`, `orchestrator.py:1-110`, `store/engine.py`, `agent/graph.py`.*
+*Generated from full repo read (README, runner, orchestrator, agent/*, store/*, db/*, scripts/*, tests/*, all 36 experiments). For design rationale see `README.md:1-215`; for execution semantics see `runner.py:1-303`, `orchestrator.py:1-110`, `store/engine.py`, `agent/graph.py`.*

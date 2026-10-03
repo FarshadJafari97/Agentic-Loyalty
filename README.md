@@ -85,18 +85,22 @@ Metric: spillover rate — P(pick Nordvik dish in round 4 | seeded on Nordvik la
 
 ### Cross-model replication (RQ1/RQ2/RQ3)
 
-Three of the `gpt-5.6-luna` designs are replicated 1:1 on two cheaper models to test whether the effects generalize beyond one LLM. Only `llm.model`, `code`, and the presentation `seed` differ; catalog, schedule, and temperature are identical:
+Five of the `gpt-5.6-luna` designs are replicated 1:1 on two cheaper models to test whether the effects generalize beyond one LLM. Only `llm.model`, `code`, and the presentation `seed` differ; catalog, schedule, and temperature are identical:
 
 | Base design | `gemini-3.5-flash-lite` | `deepseek-v4.1-flash` |
 |---|---|---|
+| E0 1-round control (`exp_024`, 120 runs) | `exp_034_e0_control_gemini.py` | `exp_035_e0_control_deepseek.py` |
 | E0 4-round control (`exp_025`, 120 runs) | `exp_026_e0_control_4r_gemini.py` | `exp_027_e0_control_4r_deepseek.py` |
+| E1 k=1 (`exp_001`, 50 runs) | `exp_032_e1_k1_gemini.py` | `exp_033_e1_k1_deepseek.py` |
 | E2 k=3 +1% (`exp_016`, 50 runs) | `exp_028_e2_k3_p1_gemini.py` | `exp_029_e2_k3_p1_deepseek.py` |
 | E3 parity spillover (`exp_022`, 50 runs) | `exp_030_e3_k3_parity_gemini.py` | `exp_031_e3_k3_parity_deepseek.py` |
 
 ```powershell
 python runner.py experiments/exp_026_e0_control_4r_gemini.py 120
 python runner.py experiments/exp_027_e0_control_4r_deepseek.py 120
-foreach ($f in "exp_028_e2_k3_p1_gemini.py","exp_029_e2_k3_p1_deepseek.py","exp_030_e3_k3_parity_gemini.py","exp_031_e3_k3_parity_deepseek.py") { python runner.py "experiments/$f" }
+python runner.py experiments/exp_034_e0_control_gemini.py 120
+python runner.py experiments/exp_035_e0_control_deepseek.py 120
+foreach ($f in "exp_028_e2_k3_p1_gemini.py","exp_029_e2_k3_p1_deepseek.py","exp_030_e3_k3_parity_gemini.py","exp_031_e3_k3_parity_deepseek.py","exp_032_e1_k1_gemini.py","exp_033_e1_k1_deepseek.py") { python runner.py "experiments/$f" }
 ```
 
 ## Requirements
@@ -206,8 +210,8 @@ python -c "from runner import load_experiment, validate_experiment; e = load_exp
 agent/          LangGraph agent (graph.py, nodes.py, prompts.py, state.py, schemas.py)
 store/          deterministic StoreEnv + Pydantic models (engine.py, models.py)
 db/             SQLAlchemy tables, engine/session factory, persistence (tables.py, base.py, repository.py)
-experiments/    EXPERIMENT definitions (exp_000 test, exp_001 E1, exp_002–021 E2 grids,
-                exp_022–023 E3 spillover, exp_024–025 E0 controls, exp_026–031 cross-model)
+experiments/    EXPERIMENT definitions (exp_000 test, exp_001/032/033 E1, exp_002–021 E2 grids,
+                exp_022–023 E3 spillover, exp_024–025 E0 controls, exp_026–035 cross-model)
 orchestrator.py round loop over the agent graph (no DB knowledge)
 runner.py       CLI entry point: validate → snapshot experiment → run N trajectories → persist
 scripts/        seed_rqs.py (seed RQ1–RQ4), smoke_test.py (dry run, no DB)

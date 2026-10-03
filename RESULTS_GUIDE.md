@@ -68,11 +68,15 @@ WHERE e.code = 'RQ1_E1_k1_seeding';
 
 ## 1. E0 controls — RQ1 baselines (no seeding, parity 15.0/15.0)
 
-### 1a. `exp_024` — `RQ1_E0_control` (1 round, gpt-5.6-luna, 120 runs)
+### 1a. `exp_024` / `exp_034` / `exp_035` — `RQ1_E0_control[_gemini|_deepseek]` (1 round, 120 runs)
 
 One row per trajectory (= one purchase). Healthy: each brand ≈ 1/3.
+Replicas `RQ1_E0_control_gemini` (`exp_034`, seed 232) and
+`RQ1_E0_control_deepseek` (`exp_035`, seed 233) — same query, swap code.
 
 ```sql
+-- Sample for 'RQ1_E0_control'.
+-- For replicas use 'RQ1_E0_control_gemini' or 'RQ1_E0_control_deepseek'.
 SELECT t.run_index, p.brand, p.product_id, p.price_paid, p.reason_text,
        r.status AS round_status, r.failure_reason
 FROM experiments e
@@ -256,6 +260,7 @@ Run §1b/§2/§3a/§4 queries for each triple, union with `model` column, then:
 
 | comparison | gpt-5.6-luna | gemini-3.5-flash-lite | deepseek-v4.1-flash |
 |---|---|---|---|
+| E0 1R baseline shares | `RQ1_E0_control` | `RQ1_E0_control_gemini` | `RQ1_E0_control_deepseek` |
 | E0 repeat `P(repeat_r2..r4)` | `RQ1_E0_control_4r` | `…_gemini` | `…_deepseek` |
 | E1 decay `P(brand_rN=Nordvik)` | `RQ1_E1_k1_seeding` | `RQ1_E1_k1_seeding_gemini` | `RQ1_E1_k1_seeding_deepseek` |
 | E2 retention cond (k3p1) | `RQ2_E2_k3_p1` | `…_gemini` | `…_deepseek` |
