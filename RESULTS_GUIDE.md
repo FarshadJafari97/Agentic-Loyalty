@@ -112,11 +112,15 @@ GROUP BY t.run_index ORDER BY t.run_index;
 
 ---
 
-## 2. E1 — `exp_001` `RQ1_E1_k1_seeding` (RQ1, 7R: 1×12/15/15 + 6×parity)
+## 2. E1 — `exp_001` `RQ1_E1_k1_seeding` + replicas `exp_032/033` (RQ1, 7R: 1×12/15/15 + 6×parity)
+
+Replicas: `RQ1_E1_k1_seeding_gemini` (`exp_032`, seed 230) and
+`RQ1_E1_k1_seeding_deepseek` (`exp_033`, seed 231) — same query, swap code.
 
 ```sql
 -- Long (round-grain): use canonical query with 'RQ1_E1_k1_seeding'
--- Wide (trajectory-grain):
+-- (replicas: replace with 'RQ1_E1_k1_seeding_gemini' or 'RQ1_E1_k1_seeding_deepseek')
+-- Wide (trajectory-grain, sample for base; swap code for replicas):
 SELECT t.run_index,
   MAX(p.brand) FILTER (WHERE r.round_number=1) AS seed_pick,
   MAX(p.brand) FILTER (WHERE r.round_number=2) AS brand_r2,
@@ -136,7 +140,7 @@ GROUP BY t.run_index ORDER BY t.run_index;
 **Output tables:**
 - `e1_long` (comprehensive, one row/round): `experiment_code|model|run_index|round_number|phase (=seeding|parity)|round_status|brand|product_id|price_paid|reason_text|seed_pick (brand_r1 repeated)|is_nordvik|is_repeat_of_seed`.
 - `e1_wide` (one row/trajectory): above + derived: `seeded_nordvik (=seed_pick='Nordvik')|n_nordvik_parity (count R2–R7 Nordvik)|streak_from_r2 (consecutive Nordvik from R2)|first_switch_round|never_switched`.
-**Summaries:** seeding take-up `P(seed_pick=Nordvik)` (≈1 expected); decay curve `P(brand_rN=Nordvik | seeded_nordvik)` for N=2..7; compare each parity round vs E0 parity baseline.
+**Summaries:** seeding take-up `P(seed_pick=Nordvik)` (≈1 expected); decay curve `P(brand_rN=Nordvik | seeded_nordvik)` for N=2..7; compare each parity round vs E0 parity baseline; compare decay curves across `RQ1_E1_k1_seeding[_gemini|_deepseek]`.
 
 ---
 
@@ -248,11 +252,12 @@ Drifting milk prices, temp 1.0, fixed order. Extract with canonical query only t
 
 ## 6. Cross-model comparison sheet (1 table to rule them all)
 
-Run §1b/§3a/§4 queries for each triple, union with `model` column, then:
+Run §1b/§2/§3a/§4 queries for each triple, union with `model` column, then:
 
 | comparison | gpt-5.6-luna | gemini-3.5-flash-lite | deepseek-v4.1-flash |
 |---|---|---|---|
 | E0 repeat `P(repeat_r2..r4)` | `RQ1_E0_control_4r` | `…_gemini` | `…_deepseek` |
+| E1 decay `P(brand_rN=Nordvik)` | `RQ1_E1_k1_seeding` | `RQ1_E1_k1_seeding_gemini` | `RQ1_E1_k1_seeding_deepseek` |
 | E2 retention cond (k3p1) | `RQ2_E2_k3_p1` | `…_gemini` | `…_deepseek` |
 | E3 spillover cond (parity) | `RQ3_E3_k3_parity` | `…_gemini` | `…_deepseek` |
 
