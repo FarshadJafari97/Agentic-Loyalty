@@ -1,5 +1,0 @@
-experiment_code,model,dish_premium_pct,n_finished,fully_seeded_rate,spillover_uncond,x,n,rate,wilson_low,wilson_high,jeffreys_low,jeffreys_high,p_vs_chance
-RQ3_E3_k3_p5,GPT-5.6-Luna,5,49,1.0,0.0,0,49,0.0,0.0,0.07269781922049637,0.0,0.049723385287822046,4.221185691634782e-09
-RQ3_E3_k3_parity,GPT-5.6-Luna,0,50,1.0,1.0,50,50,1.0,0.9286524008666414,1.0,0.9512415405559286,1.0,1.3929555690985368e-24
-RQ3_E3_k3_parity_deepseek,DeepSeek-V4.1-Flash,0,49,1.0,1.0,49,49,1.0,0.9273021807795035,1.0,0.950276614712178,1.0,4.17886670729561e-24
-RQ3_E3_k3_parity_gemini,Gemini-3.5-Flash-Lite,0,49,1.0,1.0,49,49,1.0,0.9273021807795035,1.0,0.950276614712178,1.0,4.17886670729561e-24
