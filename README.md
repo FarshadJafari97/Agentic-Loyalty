@@ -19,7 +19,7 @@ experiments/exp_*.py ──EXPERIMENT dict──▶ runner.py ──▶ orchestr
 - `orchestrator.py:run_trajectory()` — runs one full trajectory (all rounds). Knows nothing about the DB.
 - `runner.py` — loads one `EXPERIMENT` dict, validates it, creates the `experiments` row (full snapshot of catalog/schedule/configs), then runs N trajectories sequentially, persisting each round via `on_round_complete`.
 - `db/tables.py` — `research_questions → experiments → trajectories → rounds → purchases`. Experiment codes are unique; re-running the same code is blocked.
-- `scripts/seed_rqs.py` — seeds RQ1–RQ4. `scripts/smoke_test.py` — single dry-run trajectory with no DB writes.
+- `scripts/seed_rqs.py` — seeds RQ1–RQ3. `scripts/smoke_test.py` — single dry-run trajectory with no DB writes.
 
 Key experimental controls:
 
@@ -37,7 +37,6 @@ Seeded by `scripts/seed_rqs.py`:
 | RQ1 | Does early discount seeding induce persistent repeat purchases under price parity? |
 | RQ2 | Does purchase history create tolerance toward subsequent price increases? |
 | RQ3 | Does loyalty spill over to novel products under the same brand (umbrella branding)? |
-| RQ4 | Can explicit prompt interventions mitigate inertia against price shocks? (reserved, no experiments yet) |
 
 ### `exp_000_test.py` — pipeline test
 
@@ -128,7 +127,7 @@ BASE_URL=https://your-provider/v1   # optional; omit for OpenAI default
 python scripts/seed_rqs.py
 ```
 
-Idempotent — existing `RQ1`–`RQ4` rows are skipped.
+Idempotent — existing `RQ1`–`RQ3` rows are skipped.
 
 ### 2. Smoke-test the pipeline (no DB writes)
 
@@ -214,6 +213,6 @@ experiments/    EXPERIMENT definitions (exp_000 test, exp_001/032/033 E1, exp_00
                 exp_022–023 E3 spillover, exp_024–025 E0 controls, exp_026–035 cross-model)
 orchestrator.py round loop over the agent graph (no DB knowledge)
 runner.py       CLI entry point: validate → snapshot experiment → run N trajectories → persist
-scripts/        seed_rqs.py (seed RQ1–RQ4), smoke_test.py (dry run, no DB)
+scripts/        seed_rqs.py (seed RQ1–RQ3), smoke_test.py (dry run, no DB)
 tests/          pytest suite for env and graph
 ```

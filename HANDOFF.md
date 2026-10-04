@@ -34,14 +34,13 @@ experiments/exp_*.py ──EXPERIMENT dict──▶ runner.py ──▶ orchestr
 
 ## 2. Research questions (seeded by `scripts/seed_rqs.py`)
 
-Seed script is idempotent — existing `RQ1`–`RQ4` rows skipped. Must run once per database: `python scripts/seed_rqs.py`.
+Seed script is idempotent — existing `RQ1`–`RQ3` rows skipped. Must run once per database: `python scripts/seed_rqs.py`.
 
 | RQ | code | title | description |
 |----|------|-------|-------------|
 | RQ1 | `RQ1` | Does early discount seeding induce persistent repeat purchases under price parity? | Test whether promotional discounts across varying seeding durations (k rounds) create persistent state dependence and repeat purchases once price parity is restored. |
 | RQ2 | `RQ2` | Does purchase history create tolerance toward subsequent price increases? | Evaluate the agent's price elasticity and switching threshold when the previously purchased brand imposes a price premium over equal-quality competitors. |
 | RQ3 | `RQ3` | Does algorithmic loyalty spill over to novel products under the same brand? | Test whether prior repeat purchases in one product category create an umbrella brand effect, increasing the selection of an unexperienced product from the same brand. |
-| RQ4 | `RQ4` | Can explicit prompt interventions mitigate algorithmic inertia against price shocks? | Assess whether system-level debiasing directives can override algorithmic habit and eliminate price premium tolerance across different depths of prior purchase history. **Reserved — no experiments yet.** |
 
 ---
 
@@ -129,7 +128,7 @@ ENTRY → extract_category → fetch_products → decide → commit → finalize
 
 ### 4.7 `scripts/` and `tests/`
 
-- `scripts/seed_rqs.py` (67 lines): `create_all` + idempotent insert of RQ1–RQ4 (see §2).
+- `scripts/seed_rqs.py` (67 lines): `create_all` + idempotent insert of RQ1–RQ3 (see §2).
 - `scripts/smoke_test.py` (220 lines): dry run, no DB. Hardcoded `ChatOpenAI(model="deepseek-v4.1-flash", temperature=1.0)`, 3× Milk/dairy catalog, 10-round schedule (R1–5 parity 15.0; R6–10 Nordvik 16→20), `shuffle seed 412`, prints purchases/failed/shown-order/price table, asserts `purchases+failed==10`, non-empty `reason_text`, `reason_code/note is None`, disjoint rounds.
 - `scripts/Untitled-1.ipynb`: scratch notebook, not part of pipeline.
 - `tests/conftest.py`: `catalog` (Butter/dairy/A, Milk/dairy/B, Soap/laundry/A, Yogurt/dairy/A), 3-round `schedule`, `env`.
@@ -404,14 +403,13 @@ tests/          test_env.py, test_graph.py, conftest.py
 
 ## 8. Known gaps / next-owner TODOs
 
-1. **RQ4 empty** — no prompt-intervention experiments defined yet.
-2. **No analysis code** — metrics in §6 must be queried manually from Postgres (`experiments → trajectories → rounds → purchases`); no notebooks/scripts for curves/stats.
-3. **Reason classifier missing** — `purchases.reason_code/reason_note/classified_at` always NULL; smoke test asserts this. Needs post-hoc LLM classifier if free-text reasons to be coded.
-4. **Dead code** `store/engine.py:272-300` (after `return` in `commit_purchase`) — delete.
-5. **`.env:MODEL`** unused by `runner.py` (only `smoke_test.py` hardcodes its own model) — clarify or wire through.
-6. **No DB tests / no `ondelete` cascades** — manual delete order required for re-runs; consider helper script.
-7. **`exp_000` + `smoke_test` temp 1.0** — not comparable to main `0.7` body; keep as infra checks only.
-8. **E2 has no k=4** — intentional per README but confirm if gap to fill.
+1. **No analysis code** — metrics in §6 must be queried manually from Postgres (`experiments → trajectories → rounds → purchases`); no notebooks/scripts for curves/stats.
+2. **Reason classifier missing** — `purchases.reason_code/reason_note/classified_at` always NULL; smoke test asserts this. Needs post-hoc LLM classifier if free-text reasons to be coded.
+3. **Dead code** `store/engine.py:272-300` (after `return` in `commit_purchase`) — delete.
+4. **`.env:MODEL`** unused by `runner.py` (only `smoke_test.py` hardcodes its own model) — clarify or wire through.
+5. **No DB tests / no `ondelete` cascades** — manual delete order required for re-runs; consider helper script.
+6. **`exp_000` + `smoke_test` temp 1.0** — not comparable to main `0.7` body; keep as infra checks only.
+7. **E2 has no k=4** — intentional per README but confirm if gap to fill.
 
 ---
 

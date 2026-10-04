@@ -1,5 +1,5 @@
 # scripts/seed_rqs.py
-"""Seed the four research questions. Idempotent: skips existing codes."""
+"""Seed the three research questions. Idempotent: skips existing codes."""
 from __future__ import annotations
 import os
 import sys
@@ -33,12 +33,6 @@ RQS = [
         "title": "Does algorithmic loyalty spill over to novel products under the same brand?",
         "description": "Test whether prior repeat purchases in one product category create an umbrella "
                        "brand effect, increasing the selection of an unexperienced product from the same brand.",
-    },
-    {
-        "code": "RQ4",
-        "title": "Can explicit prompt interventions mitigate algorithmic inertia against price shocks?",
-        "description": "Assess whether system-level debiasing directives can override algorithmic habit and "
-                       "eliminate price premium tolerance across different depths of prior purchase history.",
     },
 ]
 
