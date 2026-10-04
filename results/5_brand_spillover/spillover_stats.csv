@@ -1,0 +1,3 @@
+condition,condition_description,n_fully_seeded,n_spillover_nordvik,spillover_pct
+parity,Price Parity (Equal $15.00),148,148,100.0
+p5,+5% Premium ($15.75 vs $15.00),49,0,0.0

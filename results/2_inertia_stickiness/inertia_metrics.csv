@@ -1,0 +1,4 @@
+round,metric_a_first_purchase,metric_b_previous_purchase,metric_a_first_purchase_pct,metric_b_previous_purchase_pct,metric_a_base_gpt_pct,metric_b_base_gpt_pct,n_trajectories
+2,61.17,61.17,61.17,61.17,85.83,85.83,358
+3,60.89,60.89,60.89,60.89,85.0,85.0,358
+4,91.9,62.85,91.9,62.85,91.67,88.33,358
