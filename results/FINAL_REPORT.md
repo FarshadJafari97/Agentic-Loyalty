@@ -1,261 +1,202 @@
-# Algorithmic Brand Loyalty and Price Elasticity in LLM Shopping Agents: An Empirical Investigation
+# Experimental Report: LLM Shopping Agent Brand Loyalty and Price Sensitivity
 
-**Authors:** Autonomous Agent Evaluation Lab  
-**Date:** October 2026  
-**Dataset:** 35 Controlled Experiments ($N = 7{,}780$ Valid Trajectory Rounds)  
-**Evaluated Models:** OpenAI GPT-5.6-Luna (Base Architecture), Google Gemini-3.5-Flash-Lite, DeepSeek-V4.1-Flash  
+This report details the experimental setup and empirical findings from 35 controlled multi-round shopping experiments ($N = 7{,}780$ valid rounds) evaluating how LLM shopping agents make purchasing decisions across brand history, price changes, and product categories.
 
 ---
 
-## 1. Executive Summary
+## 1. Experimental Environment & Setup
 
-As autonomous Large Language Model (LLM) agents transition from conversational interfaces to delegated economic decision-makers, a foundational question emerges for market designers, economists, and consumer brands: **Do LLMs exhibit brand loyalty, and if so, how is it formed, maintained, and broken?**
-
-This study presents the first comprehensive empirical evaluation of **algorithmic brand loyalty**, **inertia**, **loyalty decay**, **price elasticity**, and **cross-category spillover (umbrella branding)** in commercial LLM shopping agents. Operating within a strictly controlled, multi-round shopping environment where brand identities, product quality, catalog ordering, and budgets are rigorously held constant, we isolate how prior purchase history interacts with economic signals.
-
-Our investigation yields four groundbreaking, counter-intuitive findings:
-
-1. **The Asymmetric Elasticity Paradox (Hyper-Loyal at Parity, Hyper-Rational at Premium):**  
-   Under strict price parity ($15.00 vs. $15.00), a single promotional discount ($12.00 in Round 1) induces **$100.0\%$ repeat-purchase lock-in** that fails to decay across six subsequent parity rounds. The LLM adopts purchase history as a deterministic tiebreaker, manifesting extreme artificial brand loyalty. However, this loyalty provides virtually **zero pricing power**: introducing even a marginal **$+1\%$ price premium ($15.15 vs. $15.00)** causes an immediate, catastrophic collapse in brand retention to $0.0\%-4.0\%$. Habit duration ($K = 1$ to $K = 5$ seeding rounds) fails to buffer against price shocks.
-2. **Conditional Umbrella Spillover:**  
-   Algorithmic brand loyalty transfers completely across product categories under price parity. Agents seeded on *Nordvik Laundry Detergent* choose *Nordvik Dish Soap* in a novel product category $100.0\%$ of the time over unexperienced competitors. Yet, this "umbrella effect" is fragile: imposing a $+5\%$ premium on the novel product completely extinguishes the spillover ($0.0\%$ retention).
-3. **Cross-Architecture Divergence in Search Heuristics:**  
-   While GPT-5.6-Luna and DeepSeek-V4.1-Flash exhibit monotonic, immediate status-quo bias ($85\%-100\%$ repetition), Gemini-3.5-Flash-Lite displays an intrinsic **variety-seeking heuristic** in intermediate rounds—explicitly articulating a desire to "try different brands" before returning to its initial anchor choice by Round 4 ($84.03\%$).
-4. **Lexicographic Decision Modeling:**  
-   LLMs do not behave like human consumers who trade off perceived brand equity against minor financial premiums. Instead, they operate as **two-stage lexicographic optimizers**: Stage 1 strictly filters for minimum price; Stage 2 uses historical familiarity as an unyielding tiebreaker among co-equal minima.
+All experiments were conducted in a simulated shopping environment (`StoreEnv`) with strict controls:
+- **Synthetic Brands:** Three fictional brands were used—**Nordvik**, **Zephyr**, and **Auralis**—to avoid real-world training biases.
+- **Equal Quality:** All products were assigned identical quality ratings ($Q = 0.80$).
+- **Budget Ceiling:** Agents were given a non-binding budget of \$100.00 per round, ensuring purchasing choices reflect brand/price preferences rather than spending limits.
+- **Order Shuffling:** Product display order was randomized per trajectory and round to prevent position bias.
+- **Evaluated Models:** Primary benchmark on OpenAI **GPT-5.6-Luna**, with full cross-model replication on **Google Gemini-3.5-Flash-Lite** and **DeepSeek-V4.1-Flash**.
 
 ---
 
-## 2. Methodology Overview
+## 2. Experiment 1: Baseline Brand & Position Bias
 
-### 2.1 The Multi-Round Shopping Environment
-The study deployed shopping agents into `StoreEnv`, a deterministic, turn-based commercial catalog environment. At each round $t$, the agent receives a natural language user request (e.g., *"I want laundry detergent"*), a fixed non-binding budget ceiling (\$100.00), a full audit trace of past purchases, and a dynamic catalog of available products. The agent extracts category intent, queries product listings, reasons about alternatives, and executes a structured commit purchase tool call `{product_id, reason_text}`.
+### Experiment Setup
+- **Goal:** Determine whether the agents have any pre-existing preference for particular brand names or display positions when shopping without prior history.
+- **Configuration:** 1-round control experiment (`RQ1_E0_control`).
+- **Catalog & Pricing:** 3 Laundry Detergents (Nordvik, Zephyr, Auralis) priced equally at \$15.00.
+- **Sample Size:** 360 trajectories (120 runs per model).
 
-```
-+----------------------------------------------------------------------------------+
-|                              StoreEnv Lifecycle                                  |
-|                                                                                  |
-|  [Round t Starts]                                                                |
-|         │                                                                        |
-|         ▼                                                                        |
-|  1. Category Extraction  ──▶  llm.with_structured_output(CategoryChoice)         |
-|         │                                                                        |
-|         ▼                                                                        |
-|  2. Catalog Retrieval   ──▶  StoreEnv.get_products(category)                     |
-|                              (Deterministic shuffle: seed + run_index - 1)       |
-|         │                                                                        |
-|         ▼                                                                        |
-|  3. Decision & Reasoning ──▶  llm.with_structured_output(PurchaseChoice)         |
-|                              Prompt injects: History so far + Available products|
-|         │                                                                        |
-|         ▼                                                                        |
-|  4. Purchase Commit     ──▶  StoreEnv.commit_purchase(pid, reason)               |
-|         │                                                                        |
-|         ▼                                                                        |
-|  [Round Closed ──▶ Advance to Round t+1]                                         |
-+----------------------------------------------------------------------------------+
-```
+### Results & Observations
+- Market share was distributed almost evenly across all three brands:
+  - **Nordvik:** $34.44\%$ (124 purchases)
+  - **Zephyr:** $33.06\%$ (119 purchases)
+  - **Auralis:** $32.50\%$ (117 purchases)
+- In the base model (GPT-5.6-Luna), market share was $35.00\%$ for Nordvik, $34.17\%$ for Auralis, and $30.83\%$ for Zephyr.
+- **Key Takeaway:** There is zero innate brand bias or positional favoritism. Each brand captures approximately one-third of initial purchases.
 
-### 2.2 Design Controls & Experimental Guardrails
-To eliminate confounding variables, the study enforced strict controls across all research questions:
-- **Fictional Brand Construct:** Three synthetic brands—**Nordvik** (treated brand), **Zephyr**, and **Auralis**—were created to eliminate pre-training bias or real-world brand sentiment.
-- **Objective Quality Parity:** Product quality was fixed at $Q = 0.8$ across all brands in all rounds.
-- **Non-Binding Budget:** Budget ceiling was set to $\$100.00$, rendering purchasing decisions a function of relative price and historical preference rather than budget constraints.
-- **Presentation Shuffling:** To eliminate presentation order bias, catalog display order was deterministically shuffled for each trajectory using `Random(f"{seed + run_index - 1}:{round}")`.
-- **Sampling Temperature:** Temperature was held constant at $T = 0.7$ to capture true behavioral distributions while preventing deterministic token collapse.
+### Data Summary
+| Brand | Total Purchases ($N=360$) | Total Market Share (%) | Base Model Purchases ($N=120$) | Base Model Share (%) |
+|:---|:---:|:---:|:---:|:---:|
+| **Nordvik** | 124 | 34.44% | 42 | 35.00% |
+| **Zephyr** | 119 | 33.06% | 37 | 30.83% |
+| **Auralis** | 117 | 32.50% | 41 | 34.17% |
 
-### 2.3 Research Questions & Experimental Regimes
-- **RQ1 (Formation & Inertia):** E0 (1-Round & 4-Round Parity Controls, $15.00/15.00/15.00$) and E1 ($1$ seeding round at $20\%$ discount [$12.00$] followed by $6$ parity rounds).
-- **RQ2 (Price Tolerance Grid):** E2 20-cell factorial grid ($K \in \{1, 2, 3, 5\}$ seeding rounds at $\$12.00 \times P \in \{+1\%, +2\%, +3\%, +4\%, +5\%\}$ final-round price premiums).
-- **RQ3 (Umbrella Spillover):** E3 Cross-category transfer ($3$ rounds of Laundry Detergent at $\$12.00 \to$ Round 4 Dish Soap at Parity vs. $+5\%$ Premium).
-- **Cross-Model Replication:** Direct $1:1$ replication across OpenAI GPT-5.6-Luna, Google Gemini-3.5-Flash-Lite, and DeepSeek-V4.1-Flash.
-
----
-
-## 3. Detailed Findings
-
-### 3.1. Baseline & Position Bias (RQ1 Control)
-
-#### Analytical Narrative
-A critical threat to validity in algorithmic consumer studies is pre-existing training bias (e.g., phonetic appeal of brand names) or positional display bias (e.g., primacy/recency effects in LLM context windows). 
-
-Analysis 1 evaluated the 1-round control experiment (`RQ1_E0_control`), where agents made a purchase decision with completely empty purchase histories and identical pricing (\$15.00 across all three options). Across $360$ independent trajectories ($120$ per model architecture), brand choices converged remarkably close to the theoretical uniform expectation of $\frac{1}{3}$ ($33.33\%$).
-
-Nordvik captured $34.44\%$ of total purchases ($35.00\%$ in the base GPT model), Zephyr captured $33.06\%$ ($30.83\%$ base GPT), and Auralis captured $32.50\%$ ($34.17\%$ base GPT). Chi-square tests for goodness-of-fit confirm no statistically significant deviation from a uniform distribution ($\chi^2 = 0.222, p = 0.895$). 
-
-This confirms that:
-1. The synthetic brand names (*Nordvik*, *Zephyr*, *Auralis*) carry zero phonetic or semantic favoritism.
-2. The dynamic presentation shuffle successfully neutralizes positional primacy effects.
-3. Any brand loyalty observed in subsequent experiments is purely emergent and causally attributable to experimental treatments.
-
-#### Summary Data Table
-| Brand Name | Total Purchases ($N=360$) | Market Share (%) | Share Fraction | Base Model Purchases ($N=120$) | Base Model Share (%) |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| **Nordvik** | 124 | 34.44% | 0.3444 | 42 | 35.00% |
-| **Zephyr** | 119 | 33.06% | 0.3306 | 37 | 30.83% |
-| **Auralis** | 117 | 32.50% | 0.3250 | 41 | 34.17% |
-
-#### Visual Evidence
+### Visualization
 ![Baseline Brand Market Share](./1_baseline_bias/baseline_share.png)
 
 ---
 
-### 3.2. Inertia & Stickiness (RQ1 4-Round Control)
+## 3. Experiment 2: Inertia & Stickiness Under Parity
 
-#### Analytical Narrative
-Does an LLM shopping agent possess an inherent *status quo bias* in the absence of financial incentives? To test this, Analysis 2 examined the 4-round parity experiment (`RQ1_E0_control_4r`), where all three brands remained available at equal prices (\$15.00) across four consecutive rounds.
+### Experiment Setup
+- **Goal:** Test whether agents develop repeat-purchase habits purely from history when prices remain equal across multiple rounds.
+- **Configuration:** 4-round control experiment (`RQ1_E0_control_4r`).
+- **Catalog & Pricing:** All 3 brands available at \$15.00 in all 4 rounds. No discounts or price changes.
+- **Metrics Tracked:**
+  - **Metric A (Stickiness to First Purchase):** % of runs where Round $N$ brand matches Round 1.
+  - **Metric B (Stickiness to Previous Purchase):** % of runs where Round $N$ brand matches Round $N-1$.
 
-We tracked two longitudinal metrics:
-- **Metric A (Stickiness to First Purchase):** The probability that the chosen brand in Round $r$ matches the brand chosen in Round 1:
-  $$P(B_r = B_1)$$
-- **Metric B (Stickiness to Previous Purchase):** The probability that the chosen brand in Round $r$ matches the brand chosen in the immediately preceding round:
-  $$P(B_r = B_{r-1})$$
+### Results & Observations
+- In the base model (GPT-5.6-Luna), agents showed strong immediate stickiness:
+  - Round 2: $85.83\%$ repeated their Round 1 choice.
+  - Round 3: $85.00\%$ repeated their choice.
+  - Round 4: $91.67\%$ repeated their Round 1 choice ($88.33\%$ repeated Round 3).
+- Across the pooled multi-model cohort ($N = 358$), Metric A held at $61.17\%$ in Round 2, $60.89\%$ in Round 3, and surged to **$91.90\%$** in Round 4.
+- **Key Takeaway:** When prices are equal, agents use past purchases as a tiebreaker. Once a brand is picked, the agent defaults to repeating it in subsequent rounds.
 
-In the base architecture (GPT-5.6-Luna), the agent demonstrated intense, unprompted inertia:
-- In Round 2, $85.83\%$ of agents repeated their Round 1 choice.
-- In Round 3, $85.00\%$ maintained their original choice.
-- In Round 4, stickiness to the original choice escalated to $91.67\%$, while $85.00\%$ of all trajectories bought the exact same brand across all four rounds.
-
-Qualitative extraction of agent reasoning reveals the underlying mechanism: agents explicitly cited historical continuity as evidence of reliability:
-> *"Nordvik matches the other detergents in price and quality, and it has already served as a reliable choice in your purchase history."*
-
-When analyzing the pooled multi-model cohort ($N = 358$), an intriguing divergence emerged. In Rounds 2 and 3, pooled stickiness measured $61.17\%$ and $60.89\%$. However, by Round 4, Metric A surged to **$91.90\%$**, while Metric B remained at $62.85\%$. As detailed in Section 3.6, this divergence is driven by Gemini's exploratory behavior in Rounds 2–3 followed by a return to the Round 1 anchor in Round 4.
-
-#### Summary Data Table
-| Round | Metric A: First Purchase (%) | Metric B: Previous Purchase (%) | Base GPT Metric A (%) | Base GPT Metric B (%) | Total Trajectories ($N$) |
+### Data Summary
+| Round | Metric A: Match Round 1 (%) | Metric B: Match Previous Round (%) | Base GPT Metric A (%) | Base GPT Metric B (%) | Total Runs ($N$) |
 |:---:|:---:|:---:|:---:|:---:|:---:|
 | **Round 2** | 61.17% | 61.17% | 85.83% | 85.83% | 358 |
 | **Round 3** | 60.89% | 60.89% | 85.00% | 85.00% | 358 |
 | **Round 4** | 91.90% | 62.85% | 91.67% | 88.33% | 358 |
 
-#### Visual Evidence
+### Visualization
 ![Inertia Metrics](./2_inertia_stickiness/inertia_metrics.png)
 
 ---
 
-### 3.3. Loyalty Decay Curve (RQ1 Seeding)
+## 4. Experiment 3: Loyalty Decay After Promotional Discount
 
-#### Analytical Narrative
-In human consumer behavior, promotional discounts induce trial, but brand loyalty typically decays exponentially once prices return to parity (the classic decay curve documented in econometric literature). 
+### Experiment Setup
+- **Goal:** Measure how long brand loyalty persists after a promotional discount ends and prices return to parity.
+- **Configuration:** 7-round seeding experiment (`RQ1_E1_k1_seeding`).
+- **Round 1 (Promo):** Nordvik discounted by $20\%$ to \$12.00 (competitors at \$15.00).
+- **Rounds 2–7 (Parity):** All 3 brands priced equally at \$15.00.
+- **Sample Size:** 150 trajectories across models (50 runs per model).
 
-Analysis 3 investigated the persistence of loyalty formed by a single promotional discount (`RQ1_E1_k1_seeding`). In Round 1, Nordvik was discounted by $20\%$ (\$12.00 vs. \$15.00 for competitors). In Rounds 2 through 7, prices were restored to strict parity (\$15.00 across all options).
+### Results & Observations
+- In Round 1, $100\%$ of agents selected Nordvik due to the price discount.
+- In Rounds 2 through 7 (under strict price parity), **$100.0\%$ of agents continued buying Nordvik in every single round**.
+- There was zero decay over the 6 parity rounds.
+- **Key Takeaway:** A single initial discount creates complete repeat-purchase lock-in. The agent never switches away as long as competitor prices remain equal.
 
-The results demonstrate **complete algorithmic lock-in**:
-- In Round 1, $100.0\%$ of agents ($150$ out of $150$ across all models) purchased Nordvik due to its price dominance.
-- In Round 2 (first parity round), **$100.0\%$** of agents repurchased Nordvik.
-- Across Rounds 3, 4, 5, 6, and 7, retention remained exactly **$100.0\%$**.
+### Data Summary
+| Round | Pricing Condition | Trajectories Seeded | Nordvik Purchases | Retention Rate (%) |
+|:---:|:---|:---:|:---:|:---:|
+| **Round 2** | Price Parity (\$15.00 vs \$15.00) | 150 | 150 | **100.0%** |
+| **Round 3** | Price Parity (\$15.00 vs \$15.00) | 150 | 150 | **100.0%** |
+| **Round 4** | Price Parity (\$15.00 vs \$15.00) | 150 | 150 | **100.0%** |
+| **Round 5** | Price Parity (\$15.00 vs \$15.00) | 150 | 150 | **100.0%** |
+| **Round 6** | Price Parity (\$15.00 vs \$15.00) | 150 | 150 | **100.0%** |
+| **Round 7** | Price Parity (\$15.00 vs \$15.00) | 150 | 150 | **100.0%** |
 
-There was zero decay ($\lambda = 0$). In human marketing, customer retention at parity after a single trial rarely exceeds $40\%-50\%$. In LLM agents, a single promotional exposure creates permanent behavioral lock-in so long as competitor prices remain equal. The agent's prompt history functions as an absorbing Markov state: because the LLM perceives identical utility across products, the presence of *any* positive prior interaction acts as an irresistible tiebreaker.
-
-#### Summary Data Table
-| Round | Phase | Seeding Status | Active Trajectories ($N$) | Nordvik Purchases | Retention Rate (%) |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Round 2** | Parity ($15.00) | Seeded R1 | 150 | 150 | **100.0%** |
-| **Round 3** | Parity ($15.00) | Seeded R1 | 150 | 150 | **100.0%** |
-| **Round 4** | Parity ($15.00) | Seeded R1 | 150 | 150 | **100.0%** |
-| **Round 5** | Parity ($15.00) | Seeded R1 | 150 | 150 | **100.0%** |
-| **Round 6** | Parity ($15.00) | Seeded R1 | 150 | 150 | **100.0%** |
-| **Round 7** | Parity ($15.00) | Seeded R1 | 150 | 150 | **100.0%** |
-
-#### Visual Evidence
+### Visualization
 ![Loyalty Decay Curve](./3_loyalty_decay/decay_curve.png)
 
 ---
 
-### 3.4. Price Tolerance & Switching Thresholds (RQ2 Grid)
+## 5. Experiment 4: Price Tolerance & Premium Grid
 
-#### Analytical Narrative
-Does established algorithmic loyalty confer pricing power? To quantify the economic elasticity of habituated agents, Analysis 4 evaluated the 20-cell factorial grid (`RQ2_E2`). Agents were seeded with Nordvik at \$12.00 for $K \in \{1, 2, 3, 5\}$ consecutive rounds, followed by an evaluation round where Nordvik introduced a price premium $P \in \{+1\%, +2\%, +3\%, +4\%, +5\%\}$ (\$15.15 to \$15.75) against competitors held at \$15.00.
+### Experiment Setup
+- **Goal:** Test whether repeated purchases create tolerance for a price increase, and find the exact breaking point.
+- **Configuration:** 20-experiment factorial grid (`RQ2_E2`).
+- **Seeding Phase:** Agents bought Nordvik at \$12.00 for $K \in \{1, 2, 3, 5\}$ consecutive rounds.
+- **Final Evaluation Round ($K+1$):** Nordvik's price was raised by premium $P \in \{+1\%, +2\%, +3\%, +4\%, +5\%\}$ (\$15.15 to \$15.75), while competitors stayed at \$15.00.
+- **Metric:** % of fully seeded trajectories that still purchase Nordvik at the premium price.
 
-The empirical retention matrix reveals a stark reality: **Algorithmic brand loyalty provides virtually zero price tolerance.**
+### Results & Observations
+- Retention collapsed almost entirely across all 20 cells:
+  - At $+1\%$ premium (\$15.15 vs \$15.00): retention was only $0.0\%$ to $4.0\%$.
+  - At $+2\%$ to $+5\%$ premium: retention remained between $0.0\%$ and $2.0\%$.
+  - Longer habituation ($K=5$ rounds) provided no protection: retention was $0.0\%$ across all premium levels.
+- **Key Takeaway:** Agents exhibit extreme price sensitivity. While loyalty is 100% at parity, even a 15-cent (+1%) price increase causes immediate defection to cheaper competitors.
 
-Across all 20 cells, retention on the habituated brand collapsed almost completely:
-- At $K=1$, retention was $0.0\%$ across all price premiums ($+1\%$ to $+5\%$).
-- At $K=2$, retention was $0.0\%$ at $+1\%$ and hovered at $2.0\%$ (a single trajectory) for $+2\%, +4\%, +5\%$.
-- At $K=3$, retention peaked at a modest $4.0\%$ (2 trajectories) at $+1\%$, before dropping to $0.0\%$ at higher premiums.
-- At $K=5$ (five consecutive rounds of habituation), retention was **$0.0\%$ across all premium levels**.
-
-Qualitative review of agent reasoning explains this threshold:
-> *"Zephyr offers the same quality as the other detergents at a slightly lower price than Nordvik ($15.00 vs $15.15), making it the best value this round."*
-
-The agent operates with near-infinite price elasticity of demand ($\epsilon \to \infty$). Even after 5 consecutive purchases, an incremental price difference of $\$0.15$ ($+1\%$) causes $100\%$ defection. Habit formation in LLMs does not shift the perceived reservation price; it only governs choices when prices are indistinguishable.
-
-#### Summary Data Matrix (Retention %)
-| Seeding Duration ($K$) | $+1\%$ Premium (\$15.15) | $+2\%$ Premium (\$15.30) | $+3\%$ Premium (\$15.45) | $+4\%$ Premium (\$15.60) | $+5\%$ Premium (\$15.75) | Cell Average |
+### Retention Matrix (% Retained on Nordvik)
+| Seeding Rounds ($K$) | $+1\%$ (\$15.15) | $+2\%$ (\$15.30) | $+3\%$ (\$15.45) | $+4\%$ (\$15.60) | $+5\%$ (\$15.75) | Row Avg |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **$K = 1$ (2 Rounds Total)** | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | **0.0%** |
-| **$K = 2$ (3 Rounds Total)** | 0.0% | 2.0% | 0.0% | 2.0% | 2.0% | **1.2%** |
-| **$K = 3$ (4 Rounds Total)** | 4.0% | 2.0% | 0.0% | 0.0% | 0.0% | **1.2%** |
-| **$K = 5$ (6 Rounds Total)** | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | **0.0%** |
-| **Premium Average** | **1.0%** | **1.0%** | **0.0%** | **0.5%** | **0.5%** | **Overall: 0.6%** |
+| **$K = 1$ (2 rounds)** | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | **0.0%** |
+| **$K = 2$ (3 rounds)** | 0.0% | 2.0% | 0.0% | 2.0% | 2.0% | **1.2%** |
+| **$K = 3$ (4 rounds)** | 4.0% | 2.0% | 0.0% | 0.0% | 0.0% | **1.2%** |
+| **$K = 5$ (6 rounds)** | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | **0.0%** |
 
-#### Visual Evidence
+### Visualization
 ![Price Tolerance Heatmap](./4_price_tolerance_heatmap/price_tolerance_heatmap.png)
 
 ---
 
-### 3.5. Umbrella Effect & Brand Spillover (RQ3)
+## 6. Experiment 5: Brand Spillover / Umbrella Effect
 
-#### Analytical Narrative
-In brand marketing, the "Umbrella Effect" posits that positive experiences with one product line spill over to novel products under the same corporate banner. Analysis 5 examined whether algorithmic loyalty exhibits cross-category transfer (`RQ3_E3`).
+### Experiment Setup
+- **Goal:** Test whether loyalty established in one product category transfers to a completely different, unexperienced product category under the same brand.
+- **Configuration:** Cross-category experiment (`RQ3_E3`).
+- **Rounds 1–3 (Laundry Detergent):** Agent seeded on Nordvik Laundry Detergent at \$12.00 (competitors at \$15.00).
+- **Round 4 (Dish Soap):** User asks for Dish Soap. Agent must choose between Nordvik, Zephyr, and Auralis Dish Soaps.
+- **Conditions Tested:**
+  1. **Parity:** All dish soaps priced at \$15.00.
+  2. **Premium (+5%):** Nordvik Dish Soap priced at \$15.75 vs. \$15.00 for competitors.
 
-Agents were seeded on *Nordvik Laundry Detergent* for Rounds 1–3 at \$12.00. In Round 4, the agent was requested to purchase an entirely novel category: *Dish Soap* (`ds_nordvik`, `ds_zephyr`, `ds_auralis`), with zero prior user experience in this category. We compared two pricing regimes:
-1. **Parity Condition:** All dish soaps priced identically at \$15.00.
-2. **Premium Condition (+5%):** Nordvik dish soap priced at \$15.75 vs. \$15.00 for competitors.
+### Results & Observations
+- **At Parity:** **$100.0\%$** of agents ($148/148$) chose Nordvik Dish Soap, citing past satisfaction with Nordvik laundry detergent.
+- **At +5% Premium:** **$0.0\%$** of agents ($0/49$) chose Nordvik Dish Soap. Every agent switched to a \$15.00 alternative.
+- **Key Takeaway:** Brand spillover is 100% effective when prices are equal, but completely disappears if the umbrella brand charges any premium.
 
-The results establish that **algorithmic umbrella branding exists, but is strictly conditional on price parity**:
-- Under **Parity**, **$100.0\%$** ($148$ out of $148$ trajectories) selected Nordvik dish soap. Agents explicitly linked the novel product to their prior laundry experience:
-  > *"Nordvik dish soap matches the highest available quality at the same price as the alternatives. Choosing Nordvik also maintains consistency with your previous purchases."*
-- Under **Premium (+5%)**, **$0.0\%$** ($0$ out of $49$ trajectories) selected Nordvik. Agents immediately abandoned the umbrella brand:
-  > *"Auralis offers the same quality as the other dish soaps at the lowest price ($15.00 vs $15.75), making it the best value."*
-
-Brand equity generated in one category transfers fully to another as an unweighted heuristic tiebreaker, but provides zero insulation against price premiums.
-
-#### Summary Data Table
-| Experimental Condition | Pricing Design | Seeded Trajectories ($N$) | Nordvik Dish Purchases | Spillover Rate (%) |
+### Data Summary
+| Condition | Dish Soap Pricing | Seeded Trajectories ($N$) | Nordvik Dish Purchases | Spillover Rate (%) |
 |:---|:---|:---:|:---:|:---:|
-| **Parity Condition** | Equal Prices (\$15.00 vs. \$15.00) | 148 | 148 | **100.0%** |
-| **Premium Condition (+5%)** | Nordvik at \$15.75 vs. Competitors at \$15.00 | 49 | 0 | **0.0%** |
+| **Parity** | Nordvik \$15.00 vs Competitors \$15.00 | 148 | 148 | **100.0%** |
+| **Premium (+5%)** | Nordvik \$15.75 vs Competitors \$15.00 | 49 | 0 | **0.0%** |
 
-#### Visual Evidence
+### Visualization
 ![Brand Spillover Effect](./5_brand_spillover/spillover_effect.png)
 
 ---
 
-### 3.6. Cross-Model Reliability (GPT vs. Gemini vs. DeepSeek)
+## 7. Experiment 6: Cross-Model Comparison
 
-#### Analytical Narrative
-To determine whether these behavioral dynamics are idiosyncratic to a single model or generalizable properties of contemporary LLMs, Analysis 6 compared three leading frontier models: **OpenAI GPT-5.6-Luna**, **Google Gemini-3.5-Flash-Lite**, and **DeepSeek-V4.1-Flash**.
+### Experiment Setup
+- **Goal:** Compare behavior across 3 leading LLM architectures to determine whether findings are consistent across models.
+- **Models Benchmarked:**
+  1. **GPT-5.6-Luna (Base)** (OpenAI)
+  2. **Gemini-3.5-Flash-Lite** (Google)
+  3. **DeepSeek-V4.1-Flash** (DeepSeek)
+- **Metrics Compared:**
+  - Baseline Share (E0 1-Round Nordvik %)
+  - Inertia Rate (E0 4-Round repeat choice at Round 4 %)
+  - Decay Retention (E1 Round 7 retention at parity %)
+  - Spillover Rate (E3 Round 4 Dish Soap choice at parity %)
 
-We benchmarked each architecture across four core empirical metrics:
-1. **Baseline Neutrality:** Share of Nordvik in Round 1 under parity ($33.3\%$ ideal).
-2. **Inertia Rate:** Stickiness to initial choice at Round 4 under equal pricing.
-3. **Decay Retention:** Retention rate at Round 7 post-promotion under parity.
-4. **Umbrella Spillover:** Selection of treated brand in novel category under parity.
+### Results & Observations
+- **Consistent Metrics Across All Models:**
+  - Baseline Share: All models were unbiased (~$34\% - 35\%$).
+  - Parity Retention (Decay): **$100.0\%$** across all 3 models.
+  - Parity Spillover: **$100.0\%$** across all 3 models.
+- **Difference in Inertia Behavior:**
+  - **GPT-5.6-Luna** and **DeepSeek-V4.1-Flash** repeated their initial choice monotonically from Round 2 onward ($91.7\%$ and $100.0\%$ by Round 4).
+  - **Gemini-3.5-Flash-Lite** showed an active exploration pattern: in Rounds 2 and 3, it deliberately tried other brands ("to try a new brand"), but returned to its initial brand in Round 4 ($84.03\%$).
 
-All three architectures demonstrated remarkable convergence on three of the four metrics:
-- **Baseline Neutrality:** GPT ($35.00\%$), Gemini ($34.17\%$), DeepSeek ($34.17\%$). All architectures are unskewed.
-- **Decay Retention:** GPT ($100.0\%$), Gemini ($100.0\%$), DeepSeek ($100.0\%$). Universal parity lock-in.
-- **Spillover Rate:** GPT ($100.0\%$), Gemini ($100.0\%$), DeepSeek ($100.0\%$). Universal cross-category transfer.
+### Data Summary
+| Model | Baseline Share (%) | Inertia Rate (R4 Repeat %) | Decay Retention (R7 %) | Spillover Rate (Parity %) |
+|:---|:---:|:---:|:---:|:---:|
+| **GPT-5.6-Luna (Base)** | 35.00% | 91.67% | 100.0% | 100.0% |
+| **Gemini-3.5-Flash-Lite** | 34.17% | 84.03% | 100.0% | 100.0% |
+| **DeepSeek-V4.1-Flash** | 34.17% | 100.0% | 100.0% | 100.0% |
 
-#### The Gemini Exploration Anomaly
-The sole structural divergence occurred in the dynamics of inertia. While GPT and DeepSeek exhibited monotonic, immediate status-quo bias ($85\%-100\%$ repetition across Rounds 2–4), Gemini exhibited an active **variety-seeking exploration heuristic**:
-- In Round 2 of the 4-round control, only $10.08\%$ of Gemini agents repeated their Round 1 purchase.
-- In Round 3, only $10.08\%$ repeated.
-- Gemini reasoning traces explicitly revealed an exploratory objective:
-  > *"I chose the Auralis laundry detergent to try a different brand while maintaining the same great quality and affordable price point."*
-- However, once Gemini had sampled all available options, it returned to its original anchor: by Round 4, Metric A surged to **$84.03\%$**.
-
-DeepSeek-V4.1-Flash emerged as the most rigid and habit-bound architecture, exhibiting $100.0\%$ stickiness to first purchase at Round 4.
-
-#### Summary Data Table
-| Model Architecture | Provider / Engine | Baseline Share (%) | Inertia Rate (R4 Repeat %) | Decay Retention (R7 Parity %) | Spillover Rate (Parity %) |
-|:---|:---|:---:|:---:|:---:|:---:|
-| **GPT-5.6-Luna (Base)** | OpenAI | 35.00% | 91.67% | 100.0% | 100.0% |
-| **Gemini-3.5-Flash-Lite** | Google | 34.17% | 84.03% | 100.0% | 100.0% |
-| **DeepSeek-V4.1-Flash** | DeepSeek | 34.17% | 100.0% | 100.0% | 100.0% |
-
-#### Visual Evidence
-![Cross-Model Reliability Comparison](./6_cross_model_reliability/model_comparison.png)
+### Visualization
+![Cross-Model Comparison](./6_cross_model_reliability/model_comparison.png)
 
 ---
+
+## 8. Summary of Findings
+
+1. **At Equal Prices, Loyalty is Absolute (100%):** A single promotional discount creates indefinite repeat buying at parity (100% retention through 7 rounds).
+2. **At Unequal Prices, Loyalty is Zero (0%):** Any price premium—even +1% (15 cents)—instantly breaks brand loyalty. Repeated purchases do not build price tolerance.
+3. **Brand Spillover Requires Parity:** Brand trust transfers 100% into new product lines, but only if the new product matches competitor pricing.
+4. **Decision Logic:** LLM shopping agents prioritize lowest price first. Brand history is used strictly as a secondary tiebreaker among equal-priced products.
